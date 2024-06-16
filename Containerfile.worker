@@ -6,21 +6,20 @@ ARG ID=908
 ARG WORKER=worker
 ARG WORKER_HOME=/home/${WORKER}
 # TODO: build sbcl for musl
-RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf clang m4 tree-sitter sbcl
-RUN mkdir /usr/share/lisp
-RUN mkdir /usr/local/share/lisp
+RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf clang m4
+RUN mkdir -p /usr/share/lisp /usr/local/share/lisp
+COPY .stash/bin/ /usr/local/bin/
+COPY .stash/lib/ /usr/local/lib/
+COPY .stash/include/ /usr/local/include/
+COPY .stash/share/ /usr/local/share/
+COPY .stash/src/ /usr/local/src/
 WORKDIR /usr/local/src
 RUN hg clone https://vc.compiler.company/comp/infra
-RUN hg clone https://vc.compiler.company/comp/core
 WORKDIR infra
-RUN scripts/get-sk.sh
+# RUN scripts/get-sk.sh
 ENV CARGO_HOME="/usr/local/share/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rustup"
 ENV PATH="$PATH:/usr/local/share/cargo/bin:/usr/local/share/lisp/bin"
-# RUN sk make sbcl sbcl-install quicklisp rustup tree-sitter-langs rocksdb
-RUN make sbcl-install-gencgc
-RUN make quicklisp-install
-RUN make rocksdb-install
 RUN adduser -D -u ${ID} -k /etc/skel ${WORKER}
 USER ${WORKER}
 WORKDIR ${WORKER_HOME}
