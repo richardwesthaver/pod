@@ -36,7 +36,7 @@ RUN chown -R ${DEV}:engineer /usr/local/man/
 WORKDIR /usr/local/src
 USER ${DEV}
 # RUN cp -rf core/lisp /usr/local/share/lisp/core
-RUN rm -rf ./*
+RUN rm -rf ./infra/.stas*
 WORKDIR ${DEV_HOME}
 RUN mkdir .stash
 ENV DEV=${DEV}
