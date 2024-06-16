@@ -5,7 +5,7 @@ ARG DEV=dev
 ARG DEV_HOME=/home/${DEV}
 ARG ID=808
 # stage0
-RUN mkdir -p /usr/share/lisp /usr/local/share/lisp
+RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust
 COPY .stash/bin/ /usr/local/bin/
 COPY .stash/lib/ /usr/local/lib/
 COPY .stash/include/ /usr/local/include/
@@ -14,17 +14,15 @@ COPY .stash/src/ /usr/local/src/
 WORKDIR /usr/local/src
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
-ENV CARGO_HOME="/usr/local/share/cargo"
-ENV RUSTUP_HOME="/usr/local/share/rustup"
+ENV CARGO_HOME="/usr/local/share/rust/cargo"
+ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
 # stage1
-ENV PATH="$PATH:/usr/local/share/cargo/bin"
+ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
 RUN skel make rustup
-RUN rustup update
-# dev rustc components
 RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
-# RUN skel make tree-sitter
-# RUN skel make tree-sitter-langs
+RUN skel make tree-sitter
+RUN skel make tree-sitter-langs
 RUN useradd --system -s /usr/bin/bash -u ${ID} -k /etc/skel -m ${DEV}
 RUN groupadd -g 128 engineer -U ${DEV}
 RUN groupadd -g 256 operator -U ${DEV}
@@ -33,11 +31,10 @@ RUN chown -R ${DEV}:engineer /usr/local/src/
 RUN chown -R ${DEV}:engineer /usr/local/bin/
 RUN chown -R ${DEV}:engineer /usr/local/etc/
 RUN chown -R ${DEV}:engineer /usr/local/man/
-WORKDIR /usr/local/src
 USER ${DEV}
-# RUN cp -rf core/lisp /usr/local/share/lisp/core
-RUN rm -rf ./infra/.stas*
+RUN mkdir ${DEV_HOME}/.stash
+RUN skel make clean
+RUN skel make quicklisp
 WORKDIR ${DEV_HOME}
-RUN mkdir .stash
 ENV DEV=${DEV}
 ENV DEV_ID=${ID}
