@@ -1,0 +1,5 @@
+ARG IMAGE=localhost/box
+ARG VERSION=latest
+FROM ${IMAGE}:${VERSION}
+RUN hg clone https://vc.compiler.company/comp/core
+WORKDIR core
