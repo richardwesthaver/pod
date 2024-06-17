@@ -1,4 +1,10 @@
-FROM octobus/heptapod:latest
-RUN gitlab-ctl upgrade
-# TODO: configure instance here, pull from comp/etc
-# COPY etc/gitlab/gitlab.rb /etc/gitlab/gitlab.rb
+FROM localhost/box:latest
+ARG VC_USER=vc
+ARG VC_HOME=/home/${VC_USER}
+ARG VC_ID=842
+RUN useradd --system -s /usr/bin/bash -u ${ID} -m ${DEV}
+RUN infra/scripts/wg-gen-keys.sh private.key public.key
+RUN mkdir ${VC_HOME}/.stash
+WORKDIR ${VC_HOME}
+ENV VC_USER=${VC_USER}
+ENV VC_ID=${VC_ID}
