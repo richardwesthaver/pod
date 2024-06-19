@@ -1,2 +1,2 @@
-FROM localhost/box:latest
+FROM localhost/dev:latest
 RUN /usr/local/src/infra/scripts/wg-gen-keys.sh private.key public.key
