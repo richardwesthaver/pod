@@ -18,12 +18,11 @@ ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
 # stage1
 ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
-RUN skel make rustup
-RUN rustup default nightly
-RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
+RUN skel run install-rocksdb-pack
+RUN skel run install-emacs-mini-pack
 RUN skel make tree-sitter
 RUN skel make tree-sitter-langs
-RUN useradd --system -s /usr/bin/bash -u ${ID} -k /etc/skel -m ${DEV}
+RUN useradd --system -s /usr/bin/bash -u ${ID} -m ${DEV}
 RUN groupadd -g 128 engineer -U ${DEV}
 RUN groupadd -g 256 operator -U ${DEV}
 RUN chown -R ${DEV}:engineer /usr/local/share/
@@ -34,7 +33,10 @@ RUN chown -R ${DEV}:engineer /usr/local/man/
 USER ${DEV}
 RUN mkdir ${DEV_HOME}/.stash
 RUN skel make quicklisp
-RUN skel make clean
+RUN skel make rustup
+RUN rustup default nightly
+RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
 WORKDIR ${DEV_HOME}
+RUN rm -rf /usr/local/src/*
 ENV DEV=${DEV}
 ENV DEV_ID=${ID}
