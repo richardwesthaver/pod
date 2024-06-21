@@ -1,0 +1,10 @@
+;;; pod @ 2024-06-21.02:30:12 -*- mode:skel; -*-
+:name "pod"
+:author "Richard Westhaver"
+:version "0.1.0"
+:vc :hg
+:rules ()
+:docs ()
+:scripts ()
+:imports ()
+
