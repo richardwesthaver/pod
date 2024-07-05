@@ -6,17 +6,18 @@ ARG DEV_HOME=/home/${DEV}
 ARG ID=808
 # stage0
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust
-COPY .stash/bin/ /usr/local/bin/
-COPY .stash/lib/ /usr/local/lib/
-COPY .stash/include/ /usr/local/include/
-COPY .stash/share/ /usr/local/share/
-COPY .stash/src/ /usr/local/src/
+# COPY .stash/bin/ /usr/local/bin/
+# COPY .stash/lib/ /usr/local/lib/
+# COPY .stash/include/ /usr/local/include/
+# COPY .stash/share/ /usr/local/share/
+# COPY .stash/src/ /usr/local/src/
 WORKDIR /usr/local/src
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
 # stage1
+RUN ./bootstrap.sh
 ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
 RUN skel run install-rocksdb-pack
 RUN skel run install-emacs-mini-pack

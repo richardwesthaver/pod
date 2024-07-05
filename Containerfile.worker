@@ -5,15 +5,14 @@ ARG ID=908
 ARG WORKER=worker
 ARG WORKER_HOME=/home/${WORKER}
 # TODO: build sbcl for musl
-RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 hg
+RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp
-COPY .stash/bin/ /usr/local/bin/
-COPY .stash/lib/ /usr/local/lib/
-COPY .stash/include/ /usr/local/include/
-COPY .stash/share/ /usr/local/share/
-COPY .stash/src/ /usr/local/src/
-WORKDIR /usr/local/src/sbcl
-
+# COPY .stash/bin/ /usr/local/bin/
+# COPY .stash/lib/ /usr/local/lib/
+# COPY .stash/include/ /usr/local/include/
+# COPY .stash/share/ /usr/local/share/
+# COPY .stash/src/ /usr/local/src/
+# WORKDIR /usr/local/src/sbcl
 ENV CARGO_HOME="/usr/local/share/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rustup"
 ENV PATH="$PATH:/usr/local/share/cargo/bin:/usr/local/share/lisp/bin"

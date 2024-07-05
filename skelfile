@@ -2,9 +2,9 @@
 :name "pod"
 :author "Richard Westhaver"
 :version "0.1.0"
-:vc :hg
-:rules ()
-:docs ()
-:scripts ()
-:imports ()
-
+:vc (:hg "https://vc.compiler.company/comp/pod")
+:rules
+((all ())
+ (dev () #$podman build -f Containerfile.dev$#))
+:components
+((:containerfile "dev"))
