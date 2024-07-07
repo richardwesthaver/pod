@@ -7,4 +7,10 @@
 ((all ())
  (dev () #$podman build -f Containerfile.dev$#))
 :components
-((:containerfile "dev"))
+((:containerfile "scratch")
+ (:containerfile "alpine")
+ (:containerfile "archlinux")
+ (:containerfile "ubuntu")
+ (:containerfile "dev")
+ (:containerfile "operator")
+ (:containerfile "worker"))
