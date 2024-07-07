@@ -1,16 +1,9 @@
 FROM localhost/archlinux:latest
 RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy sbcl llvm clang lld liburing libxkbcommon --noconfirm
-# custom
 ARG DEV=dev
 ARG DEV_HOME=/home/${DEV}
 ARG DEV_ID=808
-# stage0
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust
-# COPY .stash/bin/ /usr/local/bin/
-# COPY .stash/lib/ /usr/local/lib/
-# COPY .stash/include/ /usr/local/include/
-# COPY .stash/share/ /usr/local/share/
-# COPY .stash/src/ /usr/local/src/
 RUN useradd --system -s /usr/bin/bash -u ${DEV_ID} -m ${DEV}
 RUN groupadd -g 128 engineer -U ${DEV}
 RUN groupadd -g 256 operator -U ${DEV}
@@ -19,6 +12,7 @@ RUN chown -R ${DEV}:engineer /usr/local/src/
 RUN chown -R ${DEV}:engineer /usr/local/bin/
 RUN chown -R ${DEV}:engineer /usr/local/etc/
 RUN chown -R ${DEV}:engineer /usr/local/lib/
+RUN chown -R ${DEV}:engineer /usr/local/include/
 RUN chown -R ${DEV}:engineer /usr/local/man/
 USER ${DEV}
 RUN mkdir ${DEV_HOME}/.stash
@@ -27,16 +21,16 @@ RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
-# stage1
 RUN ./bootstrap.sh
-RUN install -m 755 .stash/bin/* /usr/local/bin/
-RUN mv .stash/lib/** /usr/local/lib/
-RUN mv .stash/share/lisp/** /usr/local/share/lisp/
+RUN mv .stash/bin/skel /usr/local/bin/skel
 ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
 RUN skel run install-rocksdb-pack
 RUN skel make tree-sitter
 RUN skel make tree-sitter-install
 RUN skel make tree-sitter-langs
+RUN mv .stash/lib/** /usr/local/lib/
+RUN mv .stash/share/lisp/** /usr/local/share/lisp/
+RUN mv .stash/bin/* /usr/local/bin/
 RUN skel make quicklisp
 RUN skel make rustup
 RUN rustup default nightly
