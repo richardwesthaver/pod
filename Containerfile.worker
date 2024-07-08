@@ -2,7 +2,7 @@ FROM localhost/alpine:latest
 ARG WORKER_ID=908
 ARG WORKER=worker
 ARG WORKER_HOME=/home/${WORKER}
-RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial llvm libgccjit-dev zlib-dev texinfo
+RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial llvm libgccjit-dev zlib-dev texinfo gnutls-dev ncurses-dev
 RUN mkdir -pv /usr/share/lisp /usr/local/share/lisp
 RUN addgroup -g 128 engineer
 RUN addgroup -g 256 operator
@@ -13,18 +13,20 @@ RUN mkdir -pv ${WORKER_HOME}/.stash
 WORKDIR /usr/local/src
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
-ENV CARGO_HOME="/usr/local/share/cargo"
-ENV RUSTUP_HOME="/usr/local/share/rustup"
+# ENV CARGO_HOME="/usr/local/share/cargo"
+# ENV RUSTUP_HOME="/usr/local/share/rustup"
 ENV PATH="$PATH:/usr/local/share/cargo/bin:/usr/local/share/lisp/bin"
 RUN mkdir -pv .stash/tmp
-RUN ./scripts/install-emacs-mini-pack.sh x86_64-unknown-linux-musl
+# RUN ./scripts/install-emacs-mini-pack.sh x86_64-unknown-linux-musl # fails byte-code validation
 RUN ./scripts/install-sbcl-pack.sh x86_64-unknown-linux-musl
 RUN ./scripts/install-rocksdb-pack.sh x86_64-unknown-linux-musl
+RUN cd .stash && curl -O https://beta.quicklisp.org/quicklisp.lisp
+RUN ./scripts/quicklisp-install.sh
 # RUN ./bootstrap.sh
 # WORKDIR ${WORKER_HOME}
 # RUN rm -rf /usr/local/src/*
-USER ${WORKER}
 ENV WORKER=${WORKER}
 ENV WORKER_ID=${WORKER_ID}
 ENV WORKER_HOME=${WORKER_HOME}
+WORKDIR ${WORKER_HOME}
 ENTRYPOINT ["sh"]

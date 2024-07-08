@@ -4,7 +4,7 @@ ARG DEV=dev
 ARG DEV_HOME=/home/${DEV}
 ARG DEV_ID=808
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust
-RUN useradd --system -s /usr/bin/bash -u ${DEV_ID} -m ${DEV}
+RUN useradd --system -s /usr/bin/bash -u ${DEV_ID} -m ${DEV} -G wheel
 RUN groupadd -g 128 engineer -U ${DEV}
 RUN groupadd -g 256 operator -U ${DEV}
 RUN chown -R ${DEV}:engineer /usr/local/share/
@@ -14,6 +14,7 @@ RUN chown -R ${DEV}:engineer /usr/local/etc/
 RUN chown -R ${DEV}:engineer /usr/local/lib/
 RUN chown -R ${DEV}:engineer /usr/local/include/
 RUN chown -R ${DEV}:engineer /usr/local/man/
+RUN ssh-keygen -A
 USER ${DEV}
 RUN mkdir ${DEV_HOME}/.stash
 WORKDIR /usr/local/src
