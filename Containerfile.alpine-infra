@@ -1,11 +1,11 @@
 FROM localhost/alpine:latest
-RUN apk add --no-cache build-base zstd-dev sbcl git make linux-headers pkgconf m4 perl autoconf texinfo ncurses-dev libgccjit-dev zlib-dev
+RUN apk add --no-cache build-base zstd-dev sbcl git make linux-headers pkgconf m4 perl autoconf texinfo ncurses-dev libgccjit-dev zlib-dev tar
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
 RUN ./check.sh
 RUN mkdir -pv .stash/src
 # RUN ./scripts/get-sbcl.sh && cd .stash/src/sbcl && echo \""2.4.6:$(git rev-parse --short HEAD)"\" > version.lisp-expr && ./make.sh --dynamic-space-size=8Gb --fancy && sh make-shared-library.sh && INSTALL_ROOT=/usr/local sh install.sh
 # RUN ./scripts/get-rocksdb.sh && cd .stash/src/rocksdb && make shared_lib DISABLE_JEMALLOC=1 && make install-shared && cp -r include/* /usr/local/include/
-# RUN ./scripts/dist-sbcl-binary.sh
+# RUN ./scripts/dist-sbcl-binary.sh 
 # RUN ./scripts/dist-rocksdb-binary.sh
-# RUN ./scripts/quicklisp-install.sh
+# RUN ./scripts/quicklisp-install.sh 
