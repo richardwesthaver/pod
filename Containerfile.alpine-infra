@@ -1,11 +1,21 @@
 FROM localhost/alpine:latest
-RUN apk add --no-cache build-base zstd-dev sbcl git make linux-headers pkgconf m4 perl autoconf texinfo ncurses-dev libgccjit-dev zlib-dev tar
+RUN apk add --no-cache build-base zstd-dev git make linux-headers pkgconf m4 perl autoconf texinfo ncurses-dev libgccjit-dev zlib-dev tar shared-mime-info tree-sitter-dev btrfs-progs-dev liburing-dev curl alsa-lib-dev libssh2-dev
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
 RUN ./check.sh
-RUN mkdir -pv .stash/src
+RUN mkdir -pv .stash/src .stash/tmp
+RUN ./scripts/install-rocksdb-pack.sh x86_64-unknown-linux-musl
+RUN ./scripts/install-sbcl-pack.sh x86_64-unknown-linux-musl
+RUN cd .stash && curl -O https://beta.quicklisp.org/quicklisp.lisp
+RUN ./scripts/quicklisp-install.sh 
+RUN hg clone https://vc.compiler.company/comp/home .stash/src/home
+# TODO update home/worker
+RUN cd .stash/src/home && hg update ellis && cp .sbclrc ~/
+RUN sbcl --eval "(ql:quickload '(cl-ppcre flexi-streams quri))"
+RUN ./scripts/install-core-pack.sh x86_64-unknown-linux-musl
+# RUN hg clone https://vc.compiler.company/comp/core .stash/src/core
 # RUN ./scripts/get-sbcl.sh && cd .stash/src/sbcl && echo \""2.4.6:$(git rev-parse --short HEAD)"\" > version.lisp-expr && ./make.sh --dynamic-space-size=8Gb --fancy && sh make-shared-library.sh && INSTALL_ROOT=/usr/local sh install.sh
 # RUN ./scripts/get-rocksdb.sh && cd .stash/src/rocksdb && make shared_lib DISABLE_JEMALLOC=1 && make install-shared && cp -r include/* /usr/local/include/
 # RUN ./scripts/dist-sbcl-binary.sh 
 # RUN ./scripts/dist-rocksdb-binary.sh
-# RUN ./scripts/quicklisp-install.sh 
+
