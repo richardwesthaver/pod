@@ -17,7 +17,7 @@ RUN chown -R ${DEV}:engineer /usr/local/man/
 RUN ssh-keygen -A
 USER ${DEV}
 RUN mkdir ${DEV_HOME}/.stash
-WORKDIR /usr/local/src
+WORKDIR ${DEV_HOME}/.stash
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
@@ -37,7 +37,7 @@ RUN skel make rustup
 RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
 WORKDIR ${DEV_HOME}
-RUN rm -rf /usr/local/src/*
+RUN rm -rf ${DEV_HOME}/.stash/*
 ENV DEV=${DEV}
 ENV DEV_ID=${DEV_ID}
 ENTRYPOINT ["/usr/bin/bash"]

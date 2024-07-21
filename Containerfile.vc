@@ -1,10 +1,22 @@
-FROM localhost/box:latest
+FROM localhost/dev:latest
+USER root
 ARG VC_USER=vc
 ARG VC_HOME=/home/${VC_USER}
 ARG VC_ID=842
-RUN useradd --system -s /usr/bin/bash -u ${ID} -m ${DEV}
-RUN infra/scripts/wg-gen-keys.sh private.key public.key
-RUN mkdir ${VC_HOME}/.stash
+RUN useradd --system -s /usr/bin/bash -u ${VC_ID} -m ${VC_USER}
+USER ${VC_USER}
+WORKDIR ${VC_HOME}
+RUN mkdir .stash
+RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
+RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
+RUN hg clone https://vc.compiler.company/comp/home .stash/home
+RUN cd .stash/home && hg up ${VC_USER}
+RUN cp -rf .stash/home/* ~/
+WORKDIR .stash/infra
+RUN skel make repos
+RUN skel make packy-repos
+RUN mv .stash/src ${VC_HOME}/src
+RUN skel clean
 WORKDIR ${VC_HOME}
 ENV VC_USER=${VC_USER}
 ENV VC_ID=${VC_ID}
