@@ -1,3 +1,10 @@
 FROM localhost/dev:latest
-RUN hg clone https://vc.compiler.company/comp/infra
-RUN infra/scripts/wg-gen-keys.sh private.key public.key
+RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
+RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
+WORKDIR .stash/infra
+USER root
+RUN skel make tmp
+RUN skel run install-emacs-mini-pack
+RUN skel clean
+WORKDIR ${DEV_HOME}
+USER ${DEV}

@@ -18,6 +18,7 @@ RUN skel make repos
 RUN skel make packy-repos
 RUN mv .stash/src ${VC_HOME}/src
 RUN skel clean
+RUN skel run init-vc-bundles
 WORKDIR ${VC_HOME}
 ENV VC_USER=${VC_USER}
 ENV VC_ID=${VC_ID}
