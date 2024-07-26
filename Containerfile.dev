@@ -1,5 +1,5 @@
 FROM localhost/archlinux:latest
-RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy sbcl llvm clang lld liburing libxkbcommon --noconfirm
+RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy llvm clang lld liburing libxkbcommon --noconfirm
 ARG DEV=dev
 ARG DEV_HOME=/home/${DEV}
 ARG DEV_ID=808
@@ -16,7 +16,7 @@ RUN chown -R ${DEV}:engineer /usr/local/include/
 RUN chown -R ${DEV}:engineer /usr/local/man/
 RUN ssh-keygen -A
 USER ${DEV}
-RUN mkdir ${DEV_HOME}/.stash
+RUN mkdir -p ${DEV_HOME}/.stash/lisp
 WORKDIR ${DEV_HOME}/.stash
 RUN hg clone https://vc.compiler.company/comp/infra
 WORKDIR infra

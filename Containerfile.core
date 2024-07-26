@@ -1,5 +1,6 @@
-ARG IMAGE=localhost/dev
+ARG IMAGE=localhost/operator
 ARG VERSION=latest
 FROM ${IMAGE}:${VERSION}
-RUN hg clone https://vc.compiler.company/comp/core
-WORKDIR core
+RUN hg clone https://vc.compiler.company/comp/core .stash/core
+WORKDIR .stash/core
+ENTRYPOINT ["skel"]
