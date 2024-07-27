@@ -1,0 +1,26 @@
+FROM localhost/dev:latest
+ARG WEB_USER=web
+ARG WEB_HOME=/home/${WEB_USER}
+ARG WEB_ID=840
+USER root
+RUN --network=host pacman -Sy go --noconfirm
+RUN useradd --system -s /usr/bin/bash -u ${WEB_ID} -m ${WEB_USER}
+USER ${WEB_USER}
+WORKDIR ${WEB_HOME}
+RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
+RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
+RUN hg clone https://vc.compiler.company/comp/home .stash/home
+RUN cd .stash/home && hg up ${WEB_USER} && cp .homerc ${WEB_HOME}/.homerc
+RUN homer install
+RUN hg clone https://vc.compiler.company/comp/org .stash/org
+RUN mkdir .stash/www
+USER root
+WORKDIR .stash/infra
+RUN skel make xcaddy
+RUN skel make caddy && skel make caddy-install
+RUN skel clean
+USER ${WEB_USER}
+WORKDIR ${WEB_HOME}
+ENV WEB_USER=${WEB_USER}
+ENV WEB_ID=${WEB_ID}
+ENTRYPOINT ["caddy"]

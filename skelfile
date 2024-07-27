@@ -3,13 +3,6 @@
 :author "Richard Westhaver"
 :version "0.1.0"
 :vc (:hg "https://vc.compiler.company/comp/pod")
-:rules
-((all ())
- (archlinux () #$podman build -f Containerfile.archlinux$#)
- (alpine () #$podman build -f Containerfile.alpine$#)
- (alpine-infra () #$podman build -f Containerfile.alpine-infra$#)
- (dev () #$podman build -f Containerfile.dev$#)
- (operator () #$podman build -f Containerfile.operator$#))
 :components
 ((:containerfile "scratch")
  (:containerfile "alpine")
@@ -18,4 +11,5 @@
  (:containerfile "ubuntu")
  (:containerfile "dev")
  (:containerfile "operator")
- (:containerfile "worker"))
+ (:containerfile "worker")
+ (:containerfile "web"))
