@@ -1,7 +1,7 @@
 FROM localhost/dev:latest
 USER root
 RUN usermod -l operator --move-home --home /home/operator ${DEV}
-RUN echo "operator ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/operator # yuck
+RUN echo "operator ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/operator
 USER operator
 WORKDIR /home/operator
 RUN hg clone https://vc.compiler.company/comp/infra .stash/infra

@@ -13,3 +13,13 @@
  (:containerfile "operator")
  (:containerfile "worker")
  (:containerfile "web"))
+:rules
+((web () #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
+      --volume /srv/http:/home/web/www \
+      web$#)
+ (operator () #$podman run --name operator --replace -dt operator$#)
+ (vc () #$podman run --name vc --replace -dt -p 8888:8888 vc$#)
+ (dev () #$podman run --name dev --replace -dt dev$#)
+ (mail () #$podman run --name mail --replace -dt mail$#)
+ (alpine-infra () #$podman run --name alpine-infra --replace -dt alpine-infra$#)
+ (worker () #$podman run --name worker --replace -dt worker$#))

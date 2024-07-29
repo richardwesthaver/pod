@@ -6,12 +6,6 @@ RUN ./check.sh
 RUN mkdir -pv .stash/src .stash/tmp
 RUN ./scripts/install-rocksdb-pack.sh x86_64-unknown-linux-musl
 RUN ./scripts/install-sbcl-pack.sh x86_64-unknown-linux-musl
-RUN cd .stash && curl -O https://beta.quicklisp.org/quicklisp.lisp
-RUN ./scripts/quicklisp-install.sh 
-RUN hg clone https://vc.compiler.company/comp/home .stash/src/home
-# TODO update home/worker
-RUN cd .stash/src/home && hg update ellis && cp .sbclrc ~/
-RUN sbcl --eval "(ql:quickload '(cl-ppcre flexi-streams quri))"
 RUN ./scripts/install-core-pack.sh x86_64-unknown-linux-musl
 RUN ssh-keygen -A
 RUN skel clean

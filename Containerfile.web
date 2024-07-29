@@ -1,26 +1,25 @@
-FROM localhost/dev:latest
+FROM localhost/alpine-infra:latest
 ARG WEB_USER=web
 ARG WEB_HOME=/home/${WEB_USER}
 ARG WEB_ID=840
 USER root
-RUN --network=host pacman -Sy go --noconfirm
-RUN useradd --system -s /usr/bin/bash -u ${WEB_ID} -m ${WEB_USER}
-USER ${WEB_USER}
-WORKDIR ${WEB_HOME}
-RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
-RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
-RUN hg clone https://vc.compiler.company/comp/home .stash/home
-RUN cd .stash/home && hg up ${WEB_USER} && cp .homerc ${WEB_HOME}/.homerc
-RUN homer install
-RUN hg clone https://vc.compiler.company/comp/org .stash/org
-RUN mkdir .stash/www
+RUN --network=host apk add go
+RUN addgroup -g 840 web
+RUN adduser -D -u ${WEB_ID} -G web ${WEB_USER}
 USER root
-WORKDIR .stash/infra
+RUN hg up
 RUN skel make xcaddy
 RUN skel make caddy && skel make caddy-install
 RUN skel clean
 USER ${WEB_USER}
 WORKDIR ${WEB_HOME}
-ENV WEB_USER=${WEB_USER}
+RUN mkdir -p ${WEB_HOME}/.stash
+RUN hg clone https://vc.compiler.company/comp/home ${WEB_HOME}/.stash/home
+RUN cd ${WEB_HOME}/.stash/home && hg up ${WEB_USER} && cp caddy.json ${WEB_HOME}/caddy.json
+RUN hg clone https://vc.compiler.company/comp/org ${WEB_HOME}/org
+RUN mkdir -p ${WEB_HOME}/www
 ENV WEB_ID=${WEB_ID}
+ENV WEB_USER=${WEB_USER}
+CMD ["run", "-c", "caddy.json"]
 ENTRYPOINT ["caddy"]
+EXPOSE 2020 8080 8443
