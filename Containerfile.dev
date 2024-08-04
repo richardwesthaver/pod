@@ -26,14 +26,13 @@ RUN ./bootstrap.sh
 RUN mv .stash/bin/skel /usr/local/bin/skel
 ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
 RUN skel run install-rocksdb-pack
-RUN skel make tree-sitter
-RUN skel make tree-sitter-install
-RUN skel make tree-sitter-langs
+RUN skel build tree-sitter
+RUN skel install tree-sitter tree-sitter-langs
 RUN mv .stash/lib/** /usr/local/lib/
 RUN mv .stash/share/lisp/** /usr/local/share/lisp/
 RUN mv .stash/bin/* /usr/local/bin/
-RUN skel make quicklisp
-RUN skel make rustup
+RUN skel install quicklisp
+RUN skel install rustup
 RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
 WORKDIR ${DEV_HOME}
