@@ -9,7 +9,7 @@ RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
 WORKDIR .stash/infra
 RUN skel make tmp
 RUN sudo skel run install-emacs-mini-pack
-RUN skel clean
+RUN sudo skel clean
 WORKDIR /home/operator
 RUN cd .stash/home && hg up operator && homer install
 ENV DEV=operator
