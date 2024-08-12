@@ -2,13 +2,13 @@ FROM localhost/dev:latest
 USER root
 RUN usermod -l operator --move-home --home /home/operator ${DEV}
 RUN echo "operator ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/operator
+RUN --network=host pacman -Sy aspell hunspell-en_us --noconfirm
 USER operator
 WORKDIR /home/operator
 RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
 RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
 WORKDIR .stash/infra
-RUN skel make tmp
-RUN sudo skel run install-emacs-mini-pack
+# RUN sudo skel run install-emacs-pack
 RUN sudo skel clean
 WORKDIR /home/operator
 RUN cd .stash/home && hg up operator && homer install
