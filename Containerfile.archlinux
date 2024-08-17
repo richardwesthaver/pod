@@ -1,4 +1,5 @@
 FROM archlinux:latest
-RUN --network=host pacman-key --init
-RUN --network=host pacman-key --populate archlinux
-RUN --network=host pacman -Syu base-devel less uutils-coreutils openssl openssh mercurial git liburing wireguard-tools libxcb zstd --noconfirm
+RUN --network=host pacman-key --init -u
+RUN --network=host pacman -Sy --needed archlinux-keyring --noconfirm && pacman -Su --noconfirm
+RUN --network=host pacman -Syu base-devel less uutils-coreutils openssl openssh mercurial git liburing wireguard-tools libxcb zstd pacman-contrib --noconfirm
+RUN pacman -Scc --noconfirm

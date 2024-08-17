@@ -1,0 +1,3 @@
+FROM localhost/worker:latest
+WORKDIR ${WORKER_HOME}/.stash/infra
+RUN skel clean && skel pull

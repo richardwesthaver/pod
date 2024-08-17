@@ -2,10 +2,14 @@ FROM localhost/dev:latest
 ARG WORKER_ID=908
 ARG WORKER=worker
 ARG WORKER_HOME=/home/${WORKER}
+ARG STASH=/usr/local/share/stash
+ARG STORE=/usr/local/share/store
 USER root
 RUN useradd --system -s /usr/bin/bash -u ${WORKER_ID} -m ${WORKER} -G wheel
+RUN echo "worker ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/worker
 RUN ssh-keygen -A
-RUN chown -R ${WORKER_ID}:worker /usr/local/
+RUN mkdir -pv ${STASH} ${STORE}
+RUN chown -R ${WORKER_ID}:worker /usr/local/*
 USER ${WORKER}
 RUN mkdir -pv ${WORKER_HOME}/.stash
 WORKDIR ${WORKER_HOME}/.stash
@@ -24,3 +28,5 @@ RUN homer install
 ENV WORKER=${WORKER}
 ENV WORKER_ID=${WORKER_ID}
 ENV WORKER_HOME=${WORKER_HOME}
+ENV STASH=${STASH}
+ENV STORE=${STORE}
