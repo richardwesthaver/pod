@@ -17,8 +17,11 @@
 ((web () #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
       --volume /srv/http:/home/web/www \
       web$#)
+ (run-infra (infra-sbcl infra-stumpwm infra-emacs infra-rocksdb))
  (infra-sbcl () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-sbcl infra \
              -c "skel build sbcl && skel dist sbcl && sudo cp .stash/sbcl.tar.zst /usr/local/share/stash"$#)
+ (infra-stumpwm () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-sbcl infra \
+             -c "skel build stumpwm && skel dist stumpwm && sudo cp .stash/stumpwm.tar.zst /usr/local/share/stash"$#)
  (infra-emacs () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-emacs infra \
              -c "skel build emacs && skel dist emacs && sudo cp .stash/emacs.tar.zst /usr/local/share/stash"$#)
  (infra-rocksdb () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-rocksdb infra \
