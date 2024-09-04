@@ -6,18 +6,29 @@
 :components
 ((:containerfile "scratch")
  (:containerfile "alpine")
+ (:containerfile "alpine-worker")
  (:containerfile "alpine-infra")
  (:containerfile "archlinux")
- (:containerfile "ubuntu")
  (:containerfile "dev")
- (:containerfile "operator")
  (:containerfile "worker")
- (:containerfile "web"))
+ (:containerfile "infra")
+ (:containerfile "operator")
+ (:containerfile "web")
+ (:containerfile "vc")
+ (:containerfile "ubuntu")
+ (:containerfile "mail")
+ (:containerfile "amazon")
+ (:containerfile "archriscv"))
 :rules
-((web () #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
-      --volume /srv/http:/home/web/www \
-      web$#)
- (run-infra (infra-sbcl infra-stumpwm infra-emacs infra-rocksdb))
+((web ()
+      (:build () #$podman build -f Containerfile.web -t web --no-cache$#)
+      (:run ()
+            #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
+            --volume /srv/http:/home/web/www \
+            web$#))
+ (infra ()
+        (:build () #$podman build -f Containerfile.infra -t infra --no-cache$#)
+        (:run (infra-sbcl infra-stumpwm infra-emacs infra-rocksdb)))
  (infra-sbcl () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-sbcl infra \
              -c "skel build sbcl && skel dist sbcl && sudo cp .stash/sbcl.tar.zst /usr/local/share/stash"$#)
  (infra-stumpwm () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-sbcl infra \
@@ -26,9 +37,28 @@
              -c "skel build emacs && skel dist emacs && sudo cp .stash/emacs.tar.zst /usr/local/share/stash"$#)
  (infra-rocksdb () #$podman run --replace -dt -v /opt/stash:/usr/local/share/stash:z --name infra-rocksdb infra \
              -c "skel build rocksdb && skel dist rocksdb && sudo cp .stash/rocksdb.tar.zst /usr/local/share/stash"$#)
- (operator () #$podman run --name operator --replace -dt operator$#)
- (vc () #$podman run --name vc --replace -dt -p 8888:8888 vc$#)
- (dev () #$podman run --name dev --replace -dt dev$#)
- (mail () #$podman run --name mail --replace -dt mail$#)
- (alpine-infra () #$podman run --name alpine-infra --replace -dt alpine-infra$#)
- (worker () #$podman run --name worker --replace -dt worker$#))
+ (operator ()
+           (:build () #$podman build -f Containerfile.operator -t operator --no-cache$#)
+           (:run () #$podman run --replace -dt --name operator \
+                 -v /opt/stash:/usr/local/share/stash:z \
+                 -v /opt/store:/usr/local/share/store:z \
+                 operator$#))
+ (vc ()
+     (:build () #$podman build -f Containerfile.vc -t vc --no-cache$#)
+     (:run () #$podman run --name vc --replace -dt -v $HOME/src:/home/vc/src:z -p 8888:8888 vc$#))
+ (dev ()
+      (:build () #$podman build -f Containerfile.dev -t dev --no-cache$#)
+      (:run () #$podman run --name dev --replace -dt dev$#))
+ (archlinux ()
+            (:build () #$podman build -f Containerfile.archlinux -t archlinux --no-cache$#)
+            (:run () #$podman run --name archlinux --replace -dt archlinux$#)
+             )
+ (mail ()
+       (:build () #$podman build -f Containerfile.mail -t mail --no-cache$#)
+       (:run () #$podman run --name mail --replace -dt mail$#))
+ (alpine-infra ()
+               (:build () #$podman build -f Containerfile.alpine-infra -t alpine-infra --replace$#)
+               (:run () #$podman run --name alpine-infra --replace -dt alpine-infra$#))
+ (worker ()
+         (:build () #$podman build -f Containerfile.worker -t worker --no-cache$#)
+         (:run () #$podman run --name worker --replace -dt worker$#)))

@@ -3,23 +3,16 @@ ARG VC_USER=vc
 ARG VC_HOME=/home/${VC_USER}
 ARG VC_ID=842
 USER root
-RUN --network=host pacman -Sy python-pygments python-pygit2 python-dulwich --noconfirm
+RUN --network=host pacman -Sy python-pygments python-pygit2 python-dulwich apache nano --noconfirm
 RUN useradd --system -s /usr/bin/bash -u ${VC_ID} -m ${VC_USER}
 USER ${VC_USER}
 WORKDIR ${VC_HOME}
 RUN mkdir .stash
-RUN hg clone https://vc.compiler.company/comp/infra .stash/infra
+RUN hg clone https://vc.compiler.company/infra .stash/infra
 RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
-RUN hg clone https://vc.compiler.company/comp/home .stash/home
+RUN hg clone https://vc.compiler.company/home .stash/home
 RUN cd .stash/home && hg up ${VC_USER} && cp .homerc ${VC_HOME}/.homerc
 RUN homer install
-WORKDIR .stash/infra
-RUN skel make repos
-RUN skel make packy-repos
-RUN mv .stash/src ${VC_HOME}/src
-RUN skel clean
-RUN skel run init-vc-bundles
-WORKDIR ${VC_HOME}
 ENV VC_USER=${VC_USER}
 ENV VC_ID=${VC_ID}
-ENTRYPOINT ["hg", "serve", "--web-conf", "hgweb.conf"]
+# ENTRYPOINT ["hg", "serve", "--web-conf", "hgweb.conf"]
