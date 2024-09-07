@@ -1,1 +1,3 @@
-FROM stalwartlabs/mail-server:latest
+FROM localhost/worker:latest
+RUN --network=host curl --proto '=https' --tlsv1.2 -sSf https://get.stalw.art/install.sh -o .stash/install.sh
+ENTRYPOINT ["sudo", ".stash/install.sh"]
