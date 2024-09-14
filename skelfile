@@ -58,7 +58,7 @@
              )
  (mail ()
        (:build () #$podman build -f Containerfile.mail -t mail --no-cache$#)
-       (:run () #$podman run --name mail --replace -dt mail$#))
+       (:run () #$podman run --name mail --replace -dt -p 8080 mail$#))
  (alpine-infra ()
                (:build () #$podman build -f Containerfile.alpine-infra -t alpine-infra --replace$#)
                (:run () #$podman run --name alpine-infra --replace -dt alpine-infra$#))

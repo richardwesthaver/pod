@@ -19,7 +19,7 @@ RUN pacman -Scc --noconfirm
 USER ${DEV}
 RUN mkdir -p ${DEV_HOME}/.stash/lisp
 WORKDIR ${DEV_HOME}/.stash
-RUN hg clone https://vc.compiler.company/comp/infra
+RUN hg clone https://vc.compiler.company/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
@@ -38,7 +38,7 @@ RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
 WORKDIR ${DEV_HOME}
 RUN rm -rf ${DEV_HOME}/.stash/*
-RUN hg clone https://vc.compiler.company/comp/home .stash/home && cd .stash/home && hg up ${DEV}
+RUN hg clone https://vc.compiler.company/home .stash/home && cd .stash/home && hg up ${DEV}
 RUN cp .stash/home/.homerc ${DEV_HOME}/.homerc
 RUN homer install
 ENV DEV=${DEV}

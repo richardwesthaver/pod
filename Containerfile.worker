@@ -13,7 +13,7 @@ RUN chown -R ${WORKER_ID}:worker /usr/local/*
 USER ${WORKER}
 RUN mkdir -pv ${WORKER_HOME}/.stash
 WORKDIR ${WORKER_HOME}/.stash
-RUN hg clone https://vc.compiler.company/comp/infra
+RUN hg clone https://vc.compiler.company/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
@@ -22,7 +22,7 @@ RUN mkdir -pv .stash/tmp
 RUN skel install quicklisp
 RUN skel clean
 WORKDIR ${WORKER_HOME}
-RUN hg clone https://vc.compiler.company/comp/home .stash/home && cd .stash/home && hg up ${WORKER}
+RUN hg clone https://vc.compiler.company/home .stash/home && cd .stash/home && hg up ${WORKER}
 RUN cp .stash/home/.homerc ${WORKER_HOME}/.homerc
 RUN homer install
 ENV WORKER=${WORKER}
