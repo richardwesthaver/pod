@@ -3,17 +3,17 @@ ARG VC_USER=vc
 ARG VC_HOME=/home/${VC_USER}
 ARG VC_ID=842
 USER root
-RUN --network=host pacman -Sy python-pygments python-pygit2 python-dulwich python-pip apache nano --noconfirm
+RUN --network=host pacman -Sy python-pygments python-pygit2 python-dulwich python-pip apache uwsgi --noconfirm
 RUN useradd --system -s /usr/bin/bash -u ${VC_ID} -m ${VC_USER}
 USER ${VC_USER}
 WORKDIR ${VC_HOME}
 RUN pip install --user --break-system-packages hg-evolve 
 RUN mkdir .stash
-RUN hg clone https://vc.compiler.company/infra .stash/infra
+COPY --chmod=0755 infra .stash/infra
 RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
-RUN hg clone https://vc.compiler.company/home .stash/home
+RUN cp -rf .stash/infra/home .stash/home
 RUN cd .stash/home && hg up ${VC_USER} && cp .homerc ${VC_HOME}/.homerc
 RUN homer install
 ENV VC_USER=${VC_USER}
 ENV VC_ID=${VC_ID}
-ENTRYPOINT ["hg", "serve", "--web-conf", "hgweb.conf"]
+CMD ["./serve.sh"]
