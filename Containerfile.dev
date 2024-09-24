@@ -24,9 +24,11 @@ WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
 RUN ./bootstrap.sh
-RUN mv .stash/bin/skel /usr/local/bin/skel
+RUN mv .stash/bin/core /usr/local/bin/core
+RUN ln -sf /usr/local/bin/core /usr/local/bin/skel
+RUN ln -sf /usr/local/bin/core /usr/local/bin/homer
 ENV PATH="$PATH:/usr/local/share/rust/cargo/bin"
-RUN skel run install-rocksdb-pack
+RUN ./scripts/install-rocksdb-pack.sh
 RUN skel build tree-sitter
 RUN skel install tree-sitter tree-sitter-langs
 RUN mv .stash/lib/** /usr/local/lib/
