@@ -3,6 +3,7 @@ RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib 
 ARG DEV=dev
 ARG DEV_HOME=/home/${DEV}
 ARG DEV_ID=808
+ARG VC_UPSTREAM=https://vc.compiler.company
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust /opt/store /opt/stash
 RUN useradd --system -s /usr/bin/bash -u ${DEV_ID} -m ${DEV} -G wheel
 RUN groupadd -g 128 engineer -U ${DEV}
@@ -19,7 +20,7 @@ RUN pacman -Scc --noconfirm
 USER ${DEV}
 RUN mkdir -p ${DEV_HOME}/.stash/lisp
 WORKDIR ${DEV_HOME}/.stash
-RUN hg clone https://vc.compiler.company/infra
+RUN hg clone ${VC_UPSTREAM}/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
@@ -40,7 +41,7 @@ RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
 WORKDIR ${DEV_HOME}
 RUN rm -rf ${DEV_HOME}/.stash/*
-RUN hg clone https://vc.compiler.company/home .stash/home && cd .stash/home && hg up ${DEV}
+RUN hg clone ${VC_UPSTREAM}/home .stash/home && cd .stash/home && hg up ${DEV}
 RUN cp .stash/home/.homerc ${DEV_HOME}/.homerc
 RUN homer install
 ENV DEV=${DEV}
