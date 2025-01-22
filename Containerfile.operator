@@ -1,25 +1,6 @@
 FROM localhost/dev:latest
-USER root
-RUN usermod -l operator --move-home --home /home/operator ${DEV}
-RUN echo "operator ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/operator
 RUN --network=host pacman -Sy aspell hunspell-en_us --noconfirm
 RUN pacman -Scc --noconfirm
-WORKDIR /home/operator
-RUN hg clone https://vc.compiler.company/infra .stash/infra
-RUN hg clone https://vc.compiler.company/core .stash/core
-RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
-WORKDIR .stash/infra
-RUN mkdir -pv .stash/tmp
-RUN sudo skel build emacs
-RUN sudo skel install emacs
-RUN sudo skel clean
-WORKDIR /home/operator/.stash
-USER operator
-RUN cd core/emacs && make
-USER root
-RUN rm -rf .stash/core .stash/infra
-USER operator
-WORKDIR /home/operator
-RUN cd .stash/home && hg up operator && homer install
-ENV DEV=operator
-ENV DEV_HOME=/home/operator
+RUN hg clone https://vc.compiler.company/infra
+RUN hg clone https://vc.compiler.company/core
+RUN /infra/scripts/wg-gen-keys.sh private.key public.key

@@ -1,26 +1,10 @@
 FROM localhost/archlinux:latest
 RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy llvm clang lld liburing libxkbcommon numactl --noconfirm
-ARG DEV=dev
-ARG DEV_HOME=/home/${DEV}
-ARG DEV_ID=808
-ARG VC_UPSTREAM=https://vc.compiler.company
+ARG VC_UPSTREAM=https:/vc.localhost
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust /opt/store /opt/stash
-RUN useradd --system -s /usr/bin/bash -u ${DEV_ID} -m ${DEV} -G wheel
-RUN groupadd -g 128 engineer -U ${DEV}
-RUN groupadd -g 256 operator -U ${DEV}
-RUN chown -R ${DEV}:engineer /usr/local/share/
-RUN chown -R ${DEV}:engineer /usr/local/src/
-RUN chown -R ${DEV}:engineer /usr/local/bin/
-RUN chown -R ${DEV}:engineer /usr/local/etc/
-RUN chown -R ${DEV}:engineer /usr/local/lib/
-RUN chown -R ${DEV}:engineer /usr/local/include/
-RUN chown -R ${DEV}:engineer /usr/local/man/
 RUN ssh-keygen -A
 RUN pacman -Scc --noconfirm
-USER ${DEV}
-RUN mkdir -p ${DEV_HOME}/.stash/lisp
-WORKDIR ${DEV_HOME}/.stash
-RUN hg clone ${VC_UPSTREAM}/infra
+RUN hg clone https://vc.localhost/infra
 WORKDIR infra
 ENV CARGO_HOME="/usr/local/share/rust/cargo"
 ENV RUSTUP_HOME="/usr/local/share/rust/rustup"
@@ -39,12 +23,4 @@ RUN skel install quicklisp
 RUN skel install rustup
 RUN rustup default nightly
 RUN rustup component add --toolchain nightly rust-src rust-analyzer rustc-dev llvm-tools-preview
-WORKDIR ${DEV_HOME}
-RUN rm -rf ${DEV_HOME}/.stash/*
-RUN hg clone ${VC_UPSTREAM}/home .stash/home && cd .stash/home && hg up ${DEV}
-RUN cp .stash/home/.homerc ${DEV_HOME}/.homerc
-RUN homer install
-ENV DEV=${DEV}
-ENV DEV_ID=${DEV_ID}
-ENV DEV_HOME=${DEV_HOME}
 ENTRYPOINT ["/usr/bin/bash"]

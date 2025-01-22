@@ -64,9 +64,18 @@
  (mail ()
        (:build () #$podman build -f Containerfile.mail -t mail --no-cache$#)
        (:run () #$podman run --name mail --replace -dt -p 8080 mail$#))
+ (alpine ()
+         (:build () #$podman build -f Containerfile.alpine -t alpine --no-cache$#))
  (alpine-infra ()
-               (:build () #$podman build -f Containerfile.alpine-infra -t alpine-infra --replace$#)
+               (:build () #$podman build -f Containerfile.alpine-infra -t alpine-infra --no-cache$#)
                (:run () #$podman run --name alpine-infra --replace -dt alpine-infra$#))
  (worker ()
          (:build () #$podman build -f Containerfile.worker -t worker --no-cache$#)
-         (:run () #$podman run --name worker --replace -dt worker$#)))
+         (:run () #$podman run --name worker --replace -dt worker$#))
+ (a0 ()
+     (:build () #$buildah build -f Containerfile.a0 -t a0
+             container=$(buildah from a0)
+             buildah add $container /opt/core/store/packy/src/sbcl.tar.zst
+             buildah add $container /opt/core/store/packy/src/core.tar.zst
+             buildah add $container /opt/core/store/packy/src/infra.tar.zst
+             buildah commit $container a1$#)))

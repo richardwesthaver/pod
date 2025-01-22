@@ -1,4 +1,4 @@
-ARG IMAGE=localhost/operator
+ARG IMAGE=localhost/dev
 ARG VERSION=latest
 FROM ${IMAGE}:${VERSION}
 RUN hg clone https://vc.compiler.company/comp/core .stash/core
