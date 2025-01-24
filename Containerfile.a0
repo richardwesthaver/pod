@@ -1,0 +1,6 @@
+FROM localhost/alpine:latest
+RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial llvm libgccjit-dev zlib-dev texinfo gnutls-dev ncurses-dev
+WORKDIR /
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+ENTRYPOINT ["sh"]

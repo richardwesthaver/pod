@@ -72,21 +72,47 @@
  (worker ()
          (:build () #$podman build -f Containerfile.worker -t worker --no-cache$#)
          (:run () #$podman run --name worker --replace -dt worker$#))
- (a0 ()
-     (:build () #$buildah build -f Containerfile.a0 -t a0
+ (w1 ()
+     (:build () #$buildah build -f Containerfile.a0 -t w0
              container=$(buildah from a0)
              buildah add $container /opt/core/store/packy/src/sbcl.tar.zst /usr/src/
              buildah add $container /opt/core/store/packy/src/core.tar.zst /usr/src/
              buildah add $container /opt/core/store/packy/src/infra.tar.zst /usr/src/
              buildah add $container /opt/core/store/packy/src/home/operator.tar.zst /usr/src/
-             buildah run $container mkdir -pv /usr/share/lisp
+             buildah run $container mkdir -pv /usr/share/lisp /root/.stash/lisp
              buildah run --workingdir /usr/src/home/ $container -- sh -c 'for i in `find -type f`; do cp -rpvf $i /root/; done'
-             buildah run $container apk add sbcl
+             buildah run $container apk add sbcl liburing-dev libxkbcommon-dev btrfs-progs-dev libevdev-dev readline-dev
              buildah run --workingdir /usr/src/sbcl $container -- sh make.sh
              buildah run --workingdir /usr/src/sbcl $container -- sh install.sh
              buildah run $container apk del sbcl
-             buildah run $container mkdir /usr/src/infra/.stash
+             buildah run $container mkdir -pv /usr/src/infra/.stash/src
              buildah run --network host --workingdir /usr/src/infra/.stash/ $container curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $container sh scripts/quicklisp-install.sh
-             buildah run $container rm -rf /usr/src/sbcl
-             buildah commit $container a1$#)))
+             buildah run $container sbcl --eval '(ql:quickload :cl-ppcre)'
+             # buildah run $container rm -rf /usr/src/sbcl
+             # buildah run $container rm -rf /usr/src/infra/.stash
+             buildah commit $container w1$#)
+     (:build-sbcl () #$c=$(podman run -dt w1)
+                  podman exec -w /usr/src/sbcl $c sh make-shared-library.sh
+                  podman exec -w /usr/src/sbcl $c sh make.sh --dynamic-space-size=8Gb --without-gencgc --with-mark-region-gc --fancy
+                  podman exec -w /usr/src/sbcl $c mv /usr/src/sbcl /usr/src/infra/.stash/src/
+                  podman exec -w /usr/src/infra $c ./scripts/dist-sbcl-binary.sh
+                  podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst sbcl.tar.zst
+                  podman stop $c$#)
+     (:build-rocksdb () #$c=$(podman run -dt w1)
+                     podman exec -w /usr/src/infra $c sh scripts/get-blake3.sh
+                     podman exec -w /usr/src/infra/.stash/src/rocksdb $c make static_lib DISABLE_JEMALLOC=1
+                     podman exec -w /usr/src/infra sh scripts/dist-rocksdb-binary.sh
+                     podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst rocksdb.tar.zst$#)
+     (:build-blake3 () #$c=$(podman run -dt w1)
+                    podman exec -w /usr/src/infra $c sh scripts/get-rocksdb.sh
+                    podman exec -w /usr/src/infra/.stash/src/blake3/c $c gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
+                    blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
+                    
+                    podman exec -w /usr/src/infra sh scripts/dist-rocksdb-binary.sh
+                    podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst rocksdb.tar.zst$#))
+ (o1 ()
+     (:build () #$buildah build -f Containerfile.archlinux -t archlinux
+             buildah build -f Containerfile.o0 -t o0
+             c=$(buildah from o0)$#
+             buildah commit $c o1$#)))
