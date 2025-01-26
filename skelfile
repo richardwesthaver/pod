@@ -74,8 +74,8 @@
          (:build () #$podman build -f Containerfile.worker -t worker --no-cache$#)
          (:run () #$podman run --name worker --replace -dt worker$#))
  (w1 ()
-     (:build () #$buildah build -f Containerfile.a0 -t w0
-             c=$(buildah from a0)
+     (:build () #$buildah build -f Containerfile.w0 -t w0
+             c=$(buildah from w0)
              buildah add $c /opt/core/store/packy/src/sbcl.tar.zst /usr/src/
              buildah add $c /opt/core/store/packy/src/core.tar.zst /usr/src/
              buildah add $c /opt/core/store/packy/src/infra.tar.zst /usr/src/
@@ -86,7 +86,7 @@
              buildah run --workingdir /usr/src/sbcl $c -- sh make.sh
              buildah run --workingdir /usr/src/sbcl $c -- sh install.sh
              buildah run $c apk del sbcl
-             buildah run $c mkdir -pv /usr/src/infra/.stash/src
+             buildah run $c mkdir -pv /usr/src/infra/.stash/src /usr/src/infra/.stash/tmp
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah run $c sbcl --eval '(ql:quickload :cl-ppcre)' --quit
@@ -102,14 +102,52 @@
                      podman exec -w /usr/src/infra $c sh scripts/get-rocksdb.sh
                      podman exec -w /usr/src/infra/.stash/src/rocksdb $c make shared_lib DISABLE_JEMALLOC=1
                      podman exec -w /usr/src/infra $c sh scripts/dist-rocksdb-binary.sh
-                     podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst rocksdb.tar.zst$#)
+                     podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst rocksdb.tar.zst
+                     podman stop $c$#)
      (:build-blake3 () #$c=$(podman run -dt w1)
                     podman exec -w /usr/src/infra $c sh scripts/get-blake3.sh
-                    podman exec -w /usr/src/infra/.stash/src/blake3/c $c gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
+                    podman exec -w /usr/src/infra/.stash/src/blake3/c $c cc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
                     blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
                     
                     podman exec -w /usr/src/infra $c sh scripts/dist-blake3.sh
-                    podman cp $c:/usr/src/infra/.stash/blake3.tar.zst blake3.tar.zst$#))
+                    podman cp $c:/usr/src/infra/.stash/blake3.tar.zst blake3.tar.zst
+                    podman stop $c$#)
+     (:build-tree-sitter () #$c=$(podman run -dt w1)
+                         podman exec -w /usr/src/infra $c sh scripts/get-tree-sitter.sh
+                         podman exec -w /usr/src/infra/.stash/src/tree-sitter $c make libtree-sitter.so
+                         podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter.sh
+                         podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst tree-sitter.tar.zst$#)
+     (:build-tree-sitter-langs () #$c=$(podman run -dt w1)
+                               podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter-langs.sh
+                               podman cp $c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst tree-sitter-langs.tar.zst$#)
+     (:build-core () #$c=$(podman run -dt w1)
+                  podman exec -w /usr/src/core/lisp/ffi/tree-sitter $c cc \
+                  -g -O2 -Wall -Wno-unused-value -ltree-sitter -shared \
+                  alien.c -o ../../../libtree-sitter-alien.so
+                  podman exec -w /usr/src/core/lisp/ffi/zstd $c cc \
+                  -g -O2 -Wall -Wno-unused-value -lzstd -shared \
+                  alien.c -o ../../../libzstd-alien.so
+                  podman exec -w /usr/src/core $c cp lib*.so /usr/local/lib/
+                  podman exec -w /usr/src/core $c sbcl --eval '(ql:quickload :core)' \
+                  --eval '(asdf:make :bin/core)' --quit
+                  podman exec -w /usr/src/core $c mv lisp/bin/core ./core
+                  podman exec -w /usr/src $c tar -I 'zstd' -cf core.tar.zst core/lib*.so core/core
+                  podman exec -w /usr/src/core $c zstd core
+                  podman cp $c:/usr/src/core.tar.zst ./
+                  podman cp $c:/usr/src/core/core.zst ./$#))
+ (w2 ()
+     (:build () #$c=$(buildah from w1)
+             buildah add $c /opt/core/store/packy/dist/x86_64-musl-linux-gnu/sbcl.tar.zst /usr/src/infra/.stash/tmp/
+             buildah add $c /opt/core/store/packy/dist/x86_64-musl-linux-gnu/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
+             buildah add $c /opt/core/store/packy/dist/x86_64-musl-linux-gnu/blake3.tar.zst /usr/src/infra/.stash/tmp/
+             buildah add $c /opt/core/store/packy/dist/x86_64-musl-linux-gnu/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
+             buildah add $c /opt/core/store/packy/dist/x86_64-musl-linux-gnu/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
+             buildah commit $c w2$#))
  (o1 ()
      ;; buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
      ;; buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
@@ -122,7 +160,7 @@
              buildah run --workingdir /usr/src/home/ $c -- sh -c 'for i in `find -type f`; do cp -rpvf $i /root/; done'
              buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/core.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/.stash/tmp $c unzstd core.zst
-             buildah run --workingdir /usr/src/infra/ $c sh scripts/link-core.sh .stash/tmp/core
+             buildah run --workingdir /usr/src/infra/ $c sh scripts/link-core.sh .stash/tmp/core /usr
              buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
              buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/blake3.tar.zst /usr/src/infra/.stash/tmp/

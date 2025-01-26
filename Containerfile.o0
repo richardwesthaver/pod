@@ -1,5 +1,5 @@
 FROM localhost/archlinux:latest
-RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy llvm clang lld liburing libxkbcommon numactl libevdev gflags tbb --noconfirm
+RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy llvm clang lld liburing libxkbcommon numactl libevdev gflags tbb btrfs-progs -noconfirm
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust /opt/store /opt/stash
 RUN ssh-keygen -A
 RUN pacman -Scc --noconfirm
