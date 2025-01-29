@@ -1,4 +1,4 @@
-FROM localhost/alpine-infra:latest
+FROM localhost/w3:latest
 ARG WEB_USER=web
 ARG WEB_HOME=/home/${WEB_USER}
 ARG WEB_ID=840
@@ -7,17 +7,13 @@ RUN --network=host apk add go
 RUN addgroup -g 840 web
 RUN adduser -D -u ${WEB_ID} -G web ${WEB_USER}
 USER root
-RUN hg up
-RUN skel make xcaddy
-RUN skel make caddy && skel make caddy-install
+WORKDIR /usr/src/infra
+RUN skel build caddy 
+RUN skel install caddy
 RUN skel clean
 USER ${WEB_USER}
 WORKDIR ${WEB_HOME}
-RUN mkdir -p ${WEB_HOME}/.stash
-RUN hg clone https://vc.compiler.company/comp/home ${WEB_HOME}/.stash/home
-RUN cd ${WEB_HOME}/.stash/home && hg up ${WEB_USER} && cp caddy.json ${WEB_HOME}/caddy.json
-RUN hg clone https://vc.compiler.company/comp/org ${WEB_HOME}/org
-RUN mkdir -p ${WEB_HOME}/www
+RUN mkdir -p ${WEB_HOME}/.stash ${WEB_HOME}/www
 ENV WEB_ID=${WEB_ID}
 ENV WEB_USER=${WEB_USER}
 CMD ["run", "-c", "caddy.json"]

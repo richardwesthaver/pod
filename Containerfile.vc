@@ -1,19 +1,14 @@
-FROM localhost/dev:latest
+FROM localhost/w0:latest
 ARG VC_USER=vc
 ARG VC_HOME=/home/${VC_USER}
 ARG VC_ID=842
 USER root
-RUN --network=host pacman -Sy python-pygments python-pygit2 python-dulwich python-pip apache uwsgi --noconfirm
-RUN useradd --system -s /usr/bin/bash -u ${VC_ID} -m ${VC_USER}
+RUN apk add py3-pygments py3-pygit2 py3-dulwich py3-pip apache2-utils uwsgi
+RUN addgroup ${VC_USER}
+RUN adduser -G vc -S -s /usr/bin/bash -u ${VC_ID} ${VC_USER}
 USER ${VC_USER}
 WORKDIR ${VC_HOME}
 RUN pip install --user --break-system-packages hg-evolve 
-RUN mkdir .stash
-COPY --chmod=0755 infra .stash/infra
-RUN .stash/infra/scripts/wg-gen-keys.sh private.key public.key
-RUN cp -rf .stash/infra/home .stash/home
-RUN cd .stash/home && hg up ${VC_USER} && cp .homerc ${VC_HOME}/.homerc
-RUN homer install
 ENV VC_USER=${VC_USER}
 ENV VC_ID=${VC_ID}
 CMD ["./serve.sh"]
