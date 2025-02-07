@@ -84,7 +84,7 @@
              buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
              buildah run $c mkdir -pv /usr/share/lisp /root/.stash/lisp
              buildah run --workingdir /usr/src $c cp -rf home/. /root/
-             buildah run $c apk add sbcl liburing-dev libxkbcommon-dev btrfs-progs-dev libevdev-dev readline-dev
+             buildah run $c apk add sbcl liburing-dev libxkbcommon-dev btrfs-progs-dev libevdev-dev readline-dev perl gcompat
              buildah run --workingdir /usr/src/sbcl $c -- sh make.sh
              buildah run --workingdir /usr/src/sbcl $c -- sh install.sh
              buildah run $c apk del sbcl
@@ -167,6 +167,7 @@
              # load again to install quicklisp dependencies
              buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload :core)' --quit
              buildah run --workingdir /usr/src/core $c skel clean
+             buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
              buildah run --workingdir /usr/src/infra $c skel clean
              buildah commit $c w3
              buildah rm $c$#)

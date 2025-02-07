@@ -1,6 +1,0 @@
-FROM localhost/dev:latest
-RUN --network=host pacman -Sy aspell hunspell-en_us --noconfirm
-RUN pacman -Scc --noconfirm
-RUN hg clone https://vc.compiler.company/infra
-RUN hg clone https://vc.compiler.company/core
-RUN /infra/scripts/wg-gen-keys.sh private.key public.key
