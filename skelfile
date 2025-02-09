@@ -54,7 +54,7 @@
              buildah run --workingdir /home/vc/.stash $c rm -rf ./home
              buildah commit $c vc
              buildah rm $c$#)
-     (:run () #$podman run --name vc --replace -dt -v $HOME/src:/home/vc/src:z -p 8888:8888 vc$#))
+     (:run () #$podman run --name vc --replace -dt -v /home/vc/src:/home/vc/src:z -p 8888:8888 vc$#))
  ;; (git ()
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
@@ -66,6 +66,8 @@
             (:run () #$podman run --name archlinux --replace -dt archlinux$#))
  (alpine ()
          (:build () #$podman build -f Containerfile.alpine -t alpine --no-cache$#))
+ (amazon ()
+         (:build () #$podman build -f Containerfile.amazon -t amazon$#))
  ;;; workers
  (w ()
     (:build (build-w1 build-w2 build-w3))
@@ -91,12 +93,13 @@
              buildah run $c mkdir -pv /usr/src/infra/.stash/src /usr/src/infra/.stash/tmp
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-             buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :swank))' --quit
+             buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank))' --quit
              buildah commit $c w1
              buildah rm $c$#)
      (:build-sbcl () #$c=$(podman run -dt w1)
                   podman exec -w /usr/src/sbcl $c sh make-shared-library.sh
-                  podman exec -w /usr/src/sbcl $c sh make.sh --dynamic-space-size=8Gb --without-gencgc --with-mark-region-gc --fancy
+                  # mark-region-gc doesn't work here
+                  podman exec -w /usr/src/sbcl $c sh make.sh --dynamic-space-size=8Gb --fancy
                   podman exec -w /usr/src/sbcl $c mv /usr/src/sbcl /usr/src/infra/.stash/src/
                   podman exec -w /usr/src/infra $c ./scripts/dist-sbcl-binary.sh
                   podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86_MUSL/
