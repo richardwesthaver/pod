@@ -22,9 +22,10 @@
  (:containerfile "archriscv"))
 :rules
 ((web ()
-      (:build () #$buildah build -f Containerfile.web -t web --no-cache
+      (:build () 
+              (println "building web image")
+              #$buildah build -f Containerfile.web -t web --no-cache
               c=$(buildah from web)
-              echo "building web"
               buildah add $c $PACKY_HOME/src/home/web.tar.zst /home/web/
               buildah add $c $PACKY_HOME/src/org.tar.zst /home/web/org/
               buildah commit $c web
@@ -34,18 +35,32 @@
             --volume /srv/http:/home/web/www \
             web$#))
  (mail ()
-       (:build () #$c=$(buildah from o1)
-               echo "building mail"
-               buildah run --network=host $c pacman -Sy inetutils
+       (:build () 
+               (println "building mail image")
+               #$c=$(buildah from o1)               
+               buildah run --network=host $c pacman -Sy inetutils --noconfirm
                buildah run $c curl --proto '=https' --tlsv1.2 -sSf https://get.stalw.art/install.sh -o install.sh
                buildah run $c chmod +x ./install.sh
                buildah config --entrypoint sh --cmd ./install.sh $c
                buildah commit $c mail
                buildah rm $c$#)
        (:run () #$podman run --name mail --replace -dt -p 8080 --systemd=true mail$#))
+ (emacs ()
+       (:build () 
+               (println "building emacs image")
+               #$c=$(buildah from o1)
+               buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
+               buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
+               buildah run --workingdir /usr/src/core/emacs/ $c skel install
+               buildah run --workingdir / $c /usr/local/bin/emacs --load /root/.emacs.d/operator.el --kill
+               buildah config --entrypoint /usr/local/bin/emacs --cmd '--load /root/.emacs.d/operator.el'
+               buildah commit $c emacs
+               buildah rm $c$#)
+       (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
+
  (vc ()
-     (:build () #$echo "building vc"
-             buildah build -f Containerfile.vc -t vc
+     (:build () (println "building vc image")
+             #$buildah build -f Containerfile.vc -t vc
              c=$(buildah from vc)
              buildah run $c mkdir .stash src
              buildah add --chown vc:vc $c $PACKY_HOME/src/home/vc.tar.zst /home/vc/.stash/
@@ -76,8 +91,8 @@
                                build-tree-sitter-langs-w1 build-core-w2
                                build-emacs-mini-w3)))
  (w1 ()
-     (:build () #$echo "building w1"
-             buildah build -f Containerfile.alpine -t alpine
+     (:build () (println "building w1 image")
+             #$buildah build -f Containerfile.alpine -t alpine
              buildah build -f Containerfile.w0 -t w0
              c=$(buildah from w0)
              buildah add $c $PACKY_HOME/src/sbcl.tar.zst /usr/src/
@@ -129,8 +144,8 @@
                                podman cp $c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst $PACKY_DIST_X86_MUSL/
                                podman stop $c$#))
  (w2 ()
-     (:build () #$c=$(buildah from w1)
-             echo "building w2"
+     (:build () (println "building w2 image")
+             #$c=$(buildah from w1)
              buildah run $c apk add libssh2-dev
              buildah add $c $PACKY_DIST_X86_MUSL/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
@@ -162,8 +177,8 @@
                   podman cp $c:/usr/src/core/core.zst $PACKY_DIST_X86_MUSL/
                   podman stop $c$#))
  (w3 () 
-     (:build () #$c=$(buildah from w2)
-             echo "building w3"
+     (:build () (println "building w3 image")
+             #$c=$(buildah from w2)
              buildah add $c $PACKY_DIST_X86_MUSL/core.tar.zst /usr/src/infra/.stash/tmp/
              buildah run $c apk add autoconf libgccjit-dev texinfo
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c sh scripts/install-core-pack.sh
@@ -182,10 +197,8 @@
                         podman cp $c:/usr/src/infra/.stash/emacs-mini.tar.zst $PACKY_DIST_X86_MUSL/$#))
  ;;; operator
  (o1 ()
-     ;; buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
-     ;; buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
-     (:build () #$buildah build -f Containerfile.archlinux -t archlinux
-             echo "building o1"
+     (:build () (println "building o1 image")
+             #$buildah build -f Containerfile.archlinux -t archlinux
              buildah build -f Containerfile.o0 -t o0
              c=$(buildah from o0)
              buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
@@ -206,7 +219,7 @@
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-             buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :core))' --quit
+             buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank :core))' --quit
              buildah commit $c o1
              buildah rm $c$#))
  (o ()
@@ -215,6 +228,9 @@
                 echo "building all binary packs with output to ${PACKY_DIST_X86}"
                 podman exec -w /usr/src/infra $c skel build sbcl rocksdb emacs tree-sitter blake3
                 podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs
+                podman exec -w /usr/src/core $c skel make
+                podman exec -w /usr/src/core $c skel dist
+                podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86/
