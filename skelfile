@@ -52,10 +52,24 @@
                buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
                buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
                buildah run --workingdir /usr/src/core/emacs/ $c skel install
-               buildah run --workingdir / $c /usr/local/bin/emacs --load /root/.emacs.d/operator.el --kill
-               buildah config --entrypoint /usr/local/bin/emacs --cmd '--load /root/.emacs.d/operator.el'
+               buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el
+               buildah config --workingdir /root/ --entrypoint '["/usr/local/bin/emacs", "--load", "/root/.emacs.d/operator.el"]' $c
                buildah commit $c emacs
                buildah rm $c$#)
+       (:build-org () #$c=$(podman run -dt emacs --cmd sh)
+                   podman cp $SRC/org $c:/root/org
+                   podman exec $c mkdir /tmp/org
+                   podman exec -w /root $c /usr/local/bin/emacs --batch \
+                   --eval '(package-initialize)' \
+                   --load /root/.emacs.d/init.el \
+                   --eval '(setq project-dir "/root/org")' \
+                   --eval '(setq publish-dir "/tmp/org")' \
+                   --eval '(load-library "publish")' \
+                   --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
+                   --eval '(slime)'
+                   --eval '(publish)'
+                   podman cp $c:/tmp/org org
+                   podman stop $c$#)
        (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
 
  (vc ()
@@ -108,7 +122,7 @@
              buildah run $c mkdir -pv /usr/src/infra/.stash/src /usr/src/infra/.stash/tmp
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-             buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank))' --quit
+             buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
              buildah commit $c w1
              buildah rm $c$#)
      (:build-sbcl () #$c=$(podman run -dt w1)
@@ -160,17 +174,19 @@
              buildah commit $c w2
              buildah rm $c$#)
      (:build-core () #$c=$(podman run -dt w2)
-                  podman exec -w /usr/src/core/lisp/ffi/tree-sitter $c cc \
+                  podman exec -w /usr/src/core/ffi/tree-sitter $c cc \
                   -g -O2 -Wall -Wno-unused-value -ltree-sitter -shared \
-                  alien.c -o ../../../libtree-sitter-alien.so
-                  podman exec -w /usr/src/core/lisp/ffi/zstd $c cc \
+                  alien.c -o ../../libtree-sitter-alien.so
+                  podman exec -w /usr/src/core/ffi/zstd $c cc \
                   -g -O2 -Wall -Wno-unused-value -lzstd -shared \
-                  alien.c -o ../../../libzstd-alien.so
-                  podman exec -w /usr/src/core $c cp libtree-sitter-alien.so /usr/local/lib/
-                  podman exec -w /usr/src/core $c cp libzstd-alien.so /usr/local/lib/
-                  podman exec -w /usr/src/core $c sbcl --eval '(ql:quickload (list :ironclad :core))' \
+                  alien.c -o ../../libzstd-alien.so
+                  podman exec -w /usr/src/core $c cp libtree-sitter-alien.so libzstd-alien.so /usr/local/lib/
+                  buildah run --workingdir /root/.stash/lisp/ $c \
+                  git clone https://github.com/slime/slime
+                  podman exec -w /usr/src/core $c sbcl \
+                  --eval '(ql:quickload (list :ironclad :core :swank-client :swank-crew))' \
                   --eval '(asdf:make :bin/core)' --quit
-                  podman exec -w /usr/src/core $c mv lisp/bin/core ./core
+                  podman exec -w /usr/src/core $c mv bin/core ./core
                   podman exec -w /usr/src $c tar -I 'zstd' -cf core.tar.zst core/libtree-sitter-alien.so core/libzstd-alien.so core/core
                   podman exec -w /usr/src/core $c zstd core
                   podman cp $c:/usr/src/core.tar.zst $PACKY_DIST_X86_MUSL/
@@ -205,6 +221,8 @@
              buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
              buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
              buildah run --workingdir /usr/src $c cp -rf home/. /root/
+             buildah run --workingdir /root/.stash/lisp/ $c \
+             git clone https://github.com/slime/slime
              buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
              buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
@@ -219,7 +237,7 @@
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-             buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank :core))' --quit
+             buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew :core))' --quit
              buildah commit $c o1
              buildah rm $c$#))
  (o ()
@@ -244,7 +262,6 @@
                 podman cp --overwrite $SRC/core/. $c:/usr/src/core
                 podman cp --overwrite $SRC/demo/. $c:/usr/src/demo
                 podman cp --overwrite $SRC/org/. $c:/usr/src/org
-                podman exec -w /usr/src/infra $c skel install rustup
                 podman exec -w /usr/src/infra $c skel install rustup
                 podman exec -w /usr/src/infra $c skel dist all-source
                 podman cp $c:/usr/src/infra/infra.tar.zst $PACKY_HOME/src/
