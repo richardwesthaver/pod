@@ -271,4 +271,11 @@
                 podman cp $c:/usr/src/infra/demo.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/home.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/org.tar.zst $PACKY_HOME/src/
-                podman stop $c$#)))
+                podman stop $c$#))
+ (f1 ()
+     (:build () #$buildah build -f Containerfile.fedora -t fedora
+             c=$(buildah from fedora)
+             buildah commit $c f1
+             buildah rm $c$#))
+ (f ()
+    (:build (build-f1))))
