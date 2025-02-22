@@ -15,7 +15,6 @@
  (:containerfile "dev")
  (:containerfile "w0")
  (:containerfile "o0")
- (:containerfile "web")
  (:containerfile "vc")
  (:containerfile "ubuntu")
  (:containerfile "amazon")
@@ -24,16 +23,36 @@
 ((web ()
       (:build () 
               (println "building web image")
-              #$buildah build -f Containerfile.web -t web --no-cache
-              c=$(buildah from web)
-              buildah add $c $PACKY_HOME/src/home/web.tar.zst /home/web/
+              #$c=$(buildah from w3)
+              buildah add $c $PACKY_HOME/src/home/web.tar.zst /root/
               buildah add $c $PACKY_HOME/src/org.tar.zst /home/web/org/
+              buildah add $c $PACKY_HOME/doc/html/compiler.company.tar.zst /srv/http/compiler.company
+              buildah run $c apk add go
+              buildah config --env GOBIN=/usr/local/bin $c
+              buildah run --workingdir /usr/src/infra/ $c skel build caddy
+              buildah run --workingdir /usr/src/infra/ $c skel install caddy
+              buildah run --workingdir /usr/src/infra/ $c skel clean
+              buildah config --entrypoint '["caddy", "run", "-c", "caddy.json"]' \
+              -p 2020 -p 8080 -p 8443 \
+              $c
               buildah commit $c web
               buildah rm $c$#)
       (:run ()
             #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
-            --volume /srv/http:/home/web/www \
             web$#))
+ (dev ()
+      (:core () #$c=$(buildah from o1)
+             buildah config --workingdir /usr/src/core --entrypoint '["skel", "-i"]' -p 7070 $c
+             buildah commit $c core
+             buildah rm $c$#)
+      (:infra ()#$c=$(buildah from o1)
+              buildah config --workingdir /usr/src/infra --entrypoint '["skel", "-i"]' -p 7070 $c
+              buildah commit $c infra
+              buildah rm $c$#)
+      (:demo () #$c=$(buildah from o1)
+             buildah config --workingdir /usr/src/demo --entrypoint '["skel", "-i"]' -p 7070 $c
+             buildah commit $c demo
+             buildah rm $c$#))
  (mail ()
        (:build () 
                (println "building mail image")
@@ -46,31 +65,31 @@
                buildah rm $c$#)
        (:run () #$podman run --name mail --replace -dt -p 8080 --systemd=true mail$#))
  (emacs ()
-       (:build () 
-               (println "building emacs image")
-               #$c=$(buildah from o1)
-               buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
-               buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
-               buildah run --workingdir /usr/src/core/emacs/ $c skel install
-               buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el
-               buildah config --workingdir /root/ --entrypoint '["/usr/local/bin/emacs", "--load", "/root/.emacs.d/operator.el"]' $c
-               buildah commit $c emacs
-               buildah rm $c$#)
-       (:build-org () #$c=$(podman run -dt emacs --cmd sh)
-                   podman cp $SRC/org $c:/root/org
-                   podman exec $c mkdir /tmp/org
-                   podman exec -w /root $c /usr/local/bin/emacs --batch \
-                   --eval '(package-initialize)' \
-                   --load /root/.emacs.d/init.el \
-                   --eval '(setq project-dir "/root/org")' \
-                   --eval '(setq publish-dir "/tmp/org")' \
-                   --eval '(load-library "publish")' \
-                   --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
-                   --eval '(slime)'
-                   --eval '(publish)'
-                   podman cp $c:/tmp/org org
-                   podman stop $c$#)
-       (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
+        (:build () 
+                (println "building emacs image")
+                #$c=$(buildah from o1)
+                buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
+                buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
+                buildah run --workingdir /usr/src/core/emacs/ $c skel install
+                buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el
+                buildah config --workingdir /root/ --entrypoint '["/usr/local/bin/emacs", "--load", "/root/.emacs.d/operator.el"]' $c
+                buildah commit $c emacs
+                buildah rm $c$#)
+        (:build-org () #$c=$(podman run -dt emacs --cmd sh)
+                    podman cp $SRC/org $c:/root/org
+                    podman exec -w /root $c /usr/local/bin/emacs --batch \
+                    --eval '(package-initialize)' \
+                    --load /root/.emacs.d/init.el \
+                    --eval '(setq publish-dir "/tmp/compiler.company")' \
+                    --eval '(setq project-dir "/root/org")' \
+                    --eval '(load-library "publish")' \
+                    --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
+                    --eval '(slime)' \
+                    --eval '(publish)'
+                    podman exec -w /tmp $c tar -I 'zstd' -cf compiler.company.tar.zst compiler.company
+                    podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
+                    podman stop $c$#)
+        (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
 
  (vc ()
      (:build () (println "building vc image")
@@ -123,6 +142,7 @@
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
+             buildah config --env PATH=$PATH:/usr/local/bin $c
              buildah commit $c w1
              buildah rm $c$#)
      (:build-sbcl () #$c=$(podman run -dt w1)
