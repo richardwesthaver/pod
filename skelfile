@@ -235,8 +235,10 @@
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
+             podman exec -w /usr/src/infra $c skel install rustup
              buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
+
              buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew :core))' --quit
              buildah commit $c o1
              buildah rm $c$#))
@@ -267,5 +269,6 @@
                 podman cp $c:/usr/src/infra/infra.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/core.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/demo.tar.zst $PACKY_HOME/src/
+                podman cp $c:/usr/src/infra/home.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/org.tar.zst $PACKY_HOME/src/
                 podman stop $c$#)))
