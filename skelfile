@@ -7,15 +7,14 @@
        (packy-home :env "/opt/core/store/packy")
        (src :env (namestring (merge-pathnames "comp" (user-homedir-pathname))))
        (packy-dist-x86 :env "/opt/core/store/packy/dist/x86_64-unknown-linux-gnu")
-       (packy-dist-x86-musl :env "/opt/core/store/packy/dist/x86_64-musl-linux-gnu"))
+       (packy-dist-x86-musl :env "/opt/core/store/packy/dist/x86_64-musl-linux-gnu")
+       (vc-user :env "vc")
+       (vc-home :env "/home/vc")
+       (vc-id :env 842))
 :components
-((:containerfile "scratch")
- (:containerfile "alpine")
- (:containerfile "archlinux")
- (:containerfile "dev")
- (:containerfile "w0")
+((:containerfile "w0")
  (:containerfile "o0")
- (:containerfile "vc")
+ (:containerfile "f0")
  (:containerfile "ubuntu")
  (:containerfile "amazon")
  (:containerfile "archriscv"))
@@ -40,6 +39,9 @@
       (:run ()
             #$podman run --name web --replace -dt -p 8080:8080 -p 2020:2020 \
             web$#))
+ (scratch ()
+          (:build () #$c=$(buildah from scratch)
+                  buildah rm $c$#))
  (dev ()
       (:core () #$c=$(buildah from o1)
              buildah config --workingdir /usr/src/core --entrypoint '["skel", "-i"]' -p 7070 $c
@@ -70,16 +72,18 @@
                 #$c=$(buildah from o1)
                 buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
                 buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
+                buildah add $c /opt/core/store/packy/src/core.tar.zst /usr/src/
                 buildah run --workingdir /usr/src/core/emacs/ $c skel install
-                buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el
+                buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el --load /root/.emacs.d/operator.el
                 buildah config --workingdir /root/ --entrypoint '["/usr/local/bin/emacs", "--load", "/root/.emacs.d/operator.el"]' $c
                 buildah commit $c emacs
                 buildah rm $c$#)
         (:build-org () #$c=$(podman run -dt emacs --cmd sh)
                     podman cp $SRC/org $c:/root/org
-                    podman exec -w /root $c /usr/local/bin/emacs --batch \
+                    podman exec -tw /root $c /usr/local/bin/emacs --batch \
                     --eval '(package-initialize)' \
                     --load /root/.emacs.d/init.el \
+                    --load /root/.emacs.d/default.el \
                     --eval '(setq publish-dir "/tmp/compiler.company")' \
                     --eval '(setq project-dir "/root/org")' \
                     --eval '(load-library "publish")' \
@@ -93,22 +97,22 @@
 
  (vc ()
      (:build () (println "building vc image")
-             #$buildah build -f Containerfile.vc -t vc
-             c=$(buildah from vc)
-             buildah run $c mkdir .stash src
+             #$c=$(buildah from w0)
+             buildah run $c apk add py3-pygments py3-pygit2 py3-dulwich py3-pip apache2-utils uwsgi
+             buildah run --user root $c addgroup $VC_USER
+             buildah run --user root $c adduser -G vc -S -s /usr/bin/bash -u $VC_ID $VC_USER
+             buildah config --user $VC_USER --workingdir $VC_HOME --entrypoint "./serve.sh" -p 8888 $c
+             buildah run $c pip install --user --break-system-packages hg-evolve
+             buildah run $c mkdir $VC_HOME/.stash $VC_HOME/src
              buildah add --chown vc:vc $c $PACKY_HOME/src/home/vc.tar.zst /home/vc/.stash/
-             buildah run --workingdir /home/vc/.stash $c cp -rf home/. /home/vc/
+             buildah run --workingdir /home/vc/.stash $c cp -rf home/. $VC_HOME/
              buildah run --user root --workingdir /home/vc/ $c chown -R vc:vc .
-             buildah run --workingdir /home/vc/.stash $c rm -rf ./home
              buildah commit $c vc
              buildah rm $c$#)
-     (:run () #$podman run --name vc --replace -dt -v /home/vc/src:/home/vc/src:z -p 8888:8888 vc$#))
+     (:run () #$podman run --name vc --replace -dt -v /home/ellis/comp/:/home/vc/src -p 8888:8888 vc$#))
  ;; (git ()
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
- (dev ()
-      (:build () #$podman build -f Containerfile.dev -t dev --no-cache$#)
-      (:run () #$podman run --name dev --replace -dt dev$#))
  (archlinux ()
             (:build () #$podman build -f Containerfile.archlinux -t archlinux --no-cache$#)
             (:run () #$podman run --name archlinux --replace -dt archlinux$#))
@@ -154,13 +158,13 @@
                   podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86_MUSL/
                   podman stop $c$#)
      (:build-rocksdb () #$c=$(podman run -dt w1)
-                     podman exec -w /usr/src/infra $c sh scripts/get-rocksdb.sh
+                     podman exec -w /usr/src/infra $c git clone https://github.com/facebook/rocksdb .stash/src/rocksdb
                      podman exec -w /usr/src/infra/.stash/src/rocksdb $c make shared_lib DISABLE_JEMALLOC=1
                      podman exec -w /usr/src/infra $c sh scripts/dist-rocksdb-binary.sh
                      podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86_MUSL/
                      podman stop $c$#)
      (:build-blake3 () #$c=$(podman run -dt w1)
-                    podman exec -w /usr/src/infra $c sh scripts/get-blake3.sh
+                    podman exec -w /usr/src/infra $c git clone https://github.com/BLAKE3-team/BLAKE3 .stash/src/blake3
                     podman exec -w /usr/src/infra/.stash/src/blake3/c $c cc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
                     blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
                     
@@ -201,8 +205,8 @@
                   -g -O2 -Wall -Wno-unused-value -lzstd -shared \
                   alien.c -o ../../libzstd-alien.so
                   podman exec -w /usr/src/core $c cp libtree-sitter-alien.so libzstd-alien.so /usr/local/lib/
-                  buildah run --workingdir /root/.stash/lisp/ $c \
-                  git clone https://github.com/slime/slime
+                  podman exec -w /root/.stash/lisp/ $c \
+                  git clone https://github.com/slime/slime slime
                   podman exec -w /usr/src/core $c sbcl \
                   --eval '(ql:quickload (list :ironclad :core :swank-client :swank-crew))' \
                   --eval '(asdf:make :bin/core)' --quit
@@ -255,7 +259,7 @@
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-             podman exec -w /usr/src/infra $c skel install rustup
+             podman exec -w /usr/src/infra $c skel install rustup cargo-tools
              buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
 
@@ -284,7 +288,6 @@
                 podman cp --overwrite $SRC/core/. $c:/usr/src/core
                 podman cp --overwrite $SRC/demo/. $c:/usr/src/demo
                 podman cp --overwrite $SRC/org/. $c:/usr/src/org
-                podman exec -w /usr/src/infra $c skel install rustup
                 podman exec -w /usr/src/infra $c skel dist all-source
                 podman cp $c:/usr/src/infra/infra.tar.zst $PACKY_HOME/src/
                 podman cp $c:/usr/src/infra/core.tar.zst $PACKY_HOME/src/
