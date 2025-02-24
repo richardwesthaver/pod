@@ -74,21 +74,25 @@
                 buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
                 buildah add $c /opt/core/store/packy/src/core.tar.zst /usr/src/
                 buildah run --workingdir /usr/src/core/emacs/ $c skel install
-                buildah run -t $c /usr/local/bin/emacs --batch --load /root/.emacs.d/init.el --load /root/.emacs.d/operator.el --load /root/.emacs.d/operator.el
-                buildah config --workingdir /root/ --entrypoint '["/usr/local/bin/emacs", "--load", "/root/.emacs.d/operator.el"]' $c
+                buildah config --workingdir /root/ --entrypoint /usr/local/bin/emacs $c
+                buildah run -t $c /usr/local/bin/emacs --batch \
+                -L /root/.stash/lisp/slime/ \
+                -L /root/.emacs.d/lib/ \
+                --eval '(setq user-custom-file "/root/.emacs.d/operator.el")' \
+                --load /root/.emacs.d/init.el
                 buildah commit $c emacs
                 buildah rm $c$#)
         (:build-org () #$c=$(podman run -dt emacs --cmd sh)
-                    podman cp $SRC/org $c:/root/org
-                    podman exec -tw /root $c /usr/local/bin/emacs --batch \
+                    podman cp $SRC/ $c:/root/
+                    podman exec -t -w /root $c /usr/local/bin/emacs --batch \
                     --eval '(package-initialize)' \
-                    --load /root/.emacs.d/init.el \
-                    --load /root/.emacs.d/default.el \
                     --eval '(setq publish-dir "/tmp/compiler.company")' \
                     --eval '(setq project-dir "/root/org")' \
+                    --load /root/.emacs.d/init.el \
                     --eval '(load-library "publish")' \
                     --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
                     --eval '(slime)' \
+                    --eval "(slime-eval '(ql:quickload :core))" \
                     --eval '(publish)'
                     podman exec -w /tmp $c tar -I 'zstd' -cf compiler.company.tar.zst compiler.company
                     podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
@@ -113,11 +117,6 @@
  ;; (git ()
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
- (archlinux ()
-            (:build () #$podman build -f Containerfile.archlinux -t archlinux --no-cache$#)
-            (:run () #$podman run --name archlinux --replace -dt archlinux$#))
- (alpine ()
-         (:build () #$podman build -f Containerfile.alpine -t alpine --no-cache$#))
  (amazon ()
          (:build () #$podman build -f Containerfile.amazon -t amazon$#))
  ;;; workers
@@ -129,8 +128,7 @@
                                build-emacs-mini-w3)))
  (w1 ()
      (:build () (println "building w1 image")
-             #$buildah build -f Containerfile.alpine -t alpine
-             buildah build -f Containerfile.w0 -t w0
+             #$buildah build -f Containerfile.w0 -t w0
              c=$(buildah from w0)
              buildah add $c $PACKY_HOME/src/sbcl.tar.zst /usr/src/
              buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
@@ -238,8 +236,7 @@
  ;;; operator
  (o1 ()
      (:build () (println "building o1 image")
-             #$buildah build -f Containerfile.archlinux -t archlinux
-             buildah build -f Containerfile.o0 -t o0
+             #$buildah build -f Containerfile.o0 -t o0
              c=$(buildah from o0)
              buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
              buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
