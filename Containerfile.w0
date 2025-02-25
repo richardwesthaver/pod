@@ -1,6 +1,5 @@
 FROM localhost/alpine:latest
 RUN apk update
 RUN apk add --no-cache openssh mercurial wireguard-tools liburing libc6-compat coreutils tar
-RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial zlib-dev keyutils-dev # gnutls-dev
+RUN apk add build-base zstd-dev curl make git linux-headers openssl-dev pkgconf m4 mercurial zlib-dev keyutils-dev libssh2-dev autoconf libgccjit-dev texinfo # gnutls-dev
 WORKDIR /
-ENTRYPOINT ["sh"]

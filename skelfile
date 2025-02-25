@@ -86,14 +86,14 @@
                     podman cp $SRC/ $c:/root/
                     podman exec -t -w /root $c /usr/local/bin/emacs --batch \
                     --eval '(package-initialize)' \
+                    --eval '(setq inferior-lisp-program "sbcl")' \
                     --eval '(setq publish-dir "/tmp/compiler.company")' \
                     --eval '(setq project-dir "/root/org")' \
                     --load /root/.emacs.d/init.el \
                     --eval '(load-library "publish")' \
                     --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
-                    --eval '(slime)' \
-                    --eval "(slime-eval '(ql:quickload :core))" \
-                    --eval '(publish)'
+                    --eval '(slime "sbcl --eval \"(ql:quickload :core)\"")' \
+                    --eval '(publish t t t)'
                     podman exec -w /tmp $c tar -I 'zstd' -cf compiler.company.tar.zst compiler.company
                     podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
                     podman stop $c$#)
@@ -170,7 +170,7 @@
                     podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86_MUSL/
                     podman stop $c$#)
      (:build-tree-sitter () #$c=$(podman run -dt w1)
-                         podman exec -w /usr/src/infra $c sh scripts/get-tree-sitter.sh
+                         podman exec -w /usr/src/infra $c git clone https://github.com/tree-sitter/tree-sitter .stash/src/tree-sitter
                          podman exec -w /usr/src/infra/.stash/src/tree-sitter $c make libtree-sitter.so
                          podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter.sh
                          podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86_MUSL/
@@ -182,7 +182,6 @@
  (w2 ()
      (:build () (println "building w2 image")
              #$c=$(buildah from w1)
-             buildah run $c apk add libssh2-dev
              buildah add $c $PACKY_DIST_X86_MUSL/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/blake3.tar.zst /usr/src/infra/.stash/tmp/
@@ -218,7 +217,6 @@
      (:build () (println "building w3 image")
              #$c=$(buildah from w2)
              buildah add $c $PACKY_DIST_X86_MUSL/core.tar.zst /usr/src/infra/.stash/tmp/
-             buildah run $c apk add autoconf libgccjit-dev texinfo
              buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c sh scripts/install-core-pack.sh
              # load again to install quicklisp dependencies
              buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload :core)' --quit
@@ -229,7 +227,6 @@
              buildah rm $c$#)
      (:build-emacs-mini () #$c=$(podman run -dt w3)
                         echo "building emacs-mini with output to ${PACKY_DIST_X86_MUSL}"
-                        podman exec -w /usr/src/infra $c sh scripts/get-emacs.sh
                         podman exec -w /usr/src/infra $c skel build mini-emacs
                         podman exec -w /usr/src/infra $c skel dist mini-emacs
                         podman cp $c:/usr/src/infra/.stash/emacs-mini.tar.zst $PACKY_DIST_X86_MUSL/$#))

@@ -6,4 +6,3 @@ RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib 
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust /opt/store /opt/stash
 RUN ssh-keygen -A
 RUN pacman -Scc --noconfirm
-ENTRYPOINT ["/usr/bin/bash"]
