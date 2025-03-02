@@ -1,1 +1,1 @@
-FROM fedora/fedora:latest
+FROM fedora:latest

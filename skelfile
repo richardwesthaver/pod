@@ -1,4 +1,5 @@
 ;;; pod @ 2024-06-21.02:30:12 -*- mode:skel; -*-
+;; src-o o w all-o all-w emacs f ~= zor:1h15m
 :name "pod"
 :author "Richard Westhaver"
 :version "0.1.0"
@@ -221,7 +222,9 @@
              # load again to install quicklisp dependencies
              buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload :core)' --quit
              buildah run --workingdir /usr/src/core $c skel clean
-             buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
+	     buildah run --workingdir /usr/src/infra $c skel install rustup 
+	     buildah run $c . "$HOME/.cargo/env"
+	     buildah run --workingdir /usr/src/infra $c skel install cargo-tools
              buildah run --workingdir /usr/src/infra $c skel clean
              buildah commit $c w3
              buildah rm $c$#)
@@ -233,7 +236,7 @@
  ;;; operator
  (o1 ()
      (:build () (println "building o1 image")
-             #$buildah build -f Containerfile.o0 -t o0
+             #$podman build -f Containerfile.o0 -t o0
              c=$(buildah from o0)
              buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
              buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
