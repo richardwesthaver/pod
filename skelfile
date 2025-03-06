@@ -170,11 +170,19 @@
                     podman exec -w /usr/src/infra $c sh scripts/dist-blake3.sh
                     podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86_MUSL/
                     podman stop $c$#)
+     (:build-ublksrv () #$c=$(podman run -dt w1)
+                     podman exec -w /usr/src/infra $c git clone https://github.com/ublk-org/ublksrv .stash/src/ublksrv
+		     podman exec -w /usr/src/infra/.stash/src/ublksrv $c autoreconf -i
+		     podman exec -w /usr/src/infra/.stash/src/ublksrv $c sh ./configure
+		     podman exec -w /usr/src/infra/.stash/src/ublksrv $c make
+		     podman exec -w /usr/src/infra $c sh scripts/dist-ublksrv.sh
+		     podman cp $c:/usr/src/infra/.stash/ublksrv.tar.zst $PACKY_DIST_X86_MUSL/
+                     podman stop $c$#)
      (:build-tree-sitter () #$c=$(podman run -dt w1)
                          podman exec -w /usr/src/infra $c git clone https://github.com/tree-sitter/tree-sitter .stash/src/tree-sitter
                          podman exec -w /usr/src/infra/.stash/src/tree-sitter $c make libtree-sitter.so
-                         podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter.sh
-                         podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86_MUSL/
+			 podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter.sh
+			 podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86_MUSL/
                          podman stop $c$#)
      (:build-tree-sitter-langs () #$c=$(podman run -dt w1)
                                podman exec -w /usr/src/infra $c sh scripts/dist-tree-sitter-langs.sh
@@ -185,12 +193,14 @@
              #$c=$(buildah from w1)
              buildah add $c $PACKY_DIST_X86_MUSL/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
-             buildah add $c $PACKY_DIST_X86_MUSL/blake3.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/blake3.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-             buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-ublksrv-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
              buildah commit $c w2
@@ -223,7 +233,7 @@
              buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload :core)' --quit
              buildah run --workingdir /usr/src/core $c skel clean
 	     buildah run --workingdir /usr/src/infra $c skel install rustup 
-	     buildah run $c . "$HOME/.cargo/env"
+	     buildah run $c sh source "$HOME/.cargo/env"
 	     buildah run --workingdir /usr/src/infra $c skel install cargo-tools
              buildah run --workingdir /usr/src/infra $c skel clean
              buildah commit $c w3
