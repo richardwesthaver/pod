@@ -303,8 +303,32 @@
                 podman cp $c:/usr/src/infra/org.tar.zst $PACKY_HOME/src/
                 podman stop $c$#))
  (f1 ()
-     (:build () #$buildah build -f Containerfile.fedora -t fedora
-             c=$(buildah from fedora)
+     (:build ()
+             #$podman build -f Containerfile.f0 -t f0 --no-cache
+             c=$(buildah from f0)
+	     buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
+	     buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
+	     buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
+	     buildah run --workingdir /usr/src $c cp -rf home/. /root/
+	     buildah run --workingdir /root/.stash/lisp/ $c git clone https://github.com/slime/slime
+	     buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
+	     buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
+	     buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
+	     buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+	     buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
+	     buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
+	     buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
+	     buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
+	     buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
+	     buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
+	     buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
              buildah commit $c f1
              buildah rm $c$#))
  (f ()
