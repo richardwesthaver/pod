@@ -317,10 +317,14 @@
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
 	     buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
+	     buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
 	     buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
 	     buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
+	     buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
 	     buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
 	     buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
