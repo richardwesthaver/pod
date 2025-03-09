@@ -83,6 +83,11 @@
                 --load /root/.emacs.d/init.el
                 buildah commit $c emacs
                 buildah rm $c$#)
+        (:build-mini () #$c=$(podman run -dt o1)
+		     echo "building emacs-mini with output to ${PACKY_DIST_X86_MUSL}"
+		     podman exec -w /usr/src/infra $c skel build mini-emacs
+		     podman exec -w /usr/src/infra $c skel dist mini-emacs
+		     podman cp $c:/usr/src/infra/.stash/emacs-mini.tar.zst $PACKY_DIST_X86/$#)
         (:build-org () #$c=$(podman run -dt emacs --cmd sh)
                     podman cp $SRC/ $c:/root/
                     podman exec -t -w /root $c /usr/local/bin/emacs --batch \
@@ -163,13 +168,34 @@
                      podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86_MUSL/
                      podman stop $c$#)
      (:build-blake3 () #$c=$(podman run -dt w1)
-                    podman exec -w /usr/src/infra $c git clone https://github.com/BLAKE3-team/BLAKE3 .stash/src/blake3
+		    podman exec -w /usr/src/infra $c git clone https://github.com/BLAKE3-team/BLAKE3 .stash/src/blake3
                     podman exec -w /usr/src/infra/.stash/src/blake3/c $c cc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
                     blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S blake3_avx512_x86-64_unix.S
                     
-                    podman exec -w /usr/src/infra $c sh scripts/dist-blake3.sh
+		    podman exec -w /usr/src/infra $c sh scripts/dist-blake3.sh
                     podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86_MUSL/
                     podman stop $c$#)
+     (:build-zstd () #$c=$(podman run -dt w1)
+		  podman exec -w /usr/src/infra $c git clone https://github.com/facebook/zstd .stash/src/zstd
+                  podman exec -w /usr/src/infra/.stash/src/zstd/lib $c make
+		  podman exec -w /usr/src/infra $c sh scripts/dist-zstd.sh
+		  podman cp $c:/usr/src/infra/.stash/zstd.tar.zst $PACKY_DIST_X86_MUSL/
+		  podman stop $c$#)
+     (:build-liburing () #$c=$(podman run -dt w1)
+		      podman exec -w /usr/src/infra $c git clone https://github.com/axboe/liburing .stash/src/liburing
+		      podman exec -w /usr/src/infra/.stash/src/liburing $c sh ./configure --cc=gcc --cxx=g++
+		      podman exec -w /usr/src/infra/.stash/src/liburing $c make
+		      podman exec -w /usr/src/infra/.stash/src/liburing $c make liburing.pc
+		      podman exec -w /usr/src/infra $c sh scripts/dist-liburing.sh
+		      podman cp $c:/usr/src/infra/.stash/liburing.tar.zst $PACKY_DIST_X86_MUSL/
+		      podman stop $c$#)
+     (:build-bzip2 () #$c=$(podman run -dt w1)
+		   podman exec -w /usr/src/infra $c git clone https://gitlab.com/federicomenaquintero/bzip2 .stash/src/bzip2
+		   podman exec -w /usr/src/infra/.stash/src/bzip2 $c meson --prefix /usr/local build
+		   podman exec -w /usr/src/infra/.stash/src/bzip2 $c ninja -C build
+		   podman exec -w /usr/src/infra $c sh scripts/dist-bzip2.sh
+		   podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86_MUSL/
+		   podman stop $c$#)
      (:build-ublksrv () #$c=$(podman run -dt w1)
                      podman exec -w /usr/src/infra $c git clone https://github.com/ublk-org/ublksrv .stash/src/ublksrv
 		     podman exec -w /usr/src/infra/.stash/src/ublksrv $c autoreconf -i
@@ -192,7 +218,7 @@
      (:build () (println "building w2 image")
              #$c=$(buildah from w1)
              buildah add $c $PACKY_DIST_X86_MUSL/sbcl.tar.zst /usr/src/infra/.stash/tmp/
-             buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86_MUSL/blake3.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86_MUSL/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
@@ -254,6 +280,8 @@
              buildah run --workingdir /usr/src $c cp -rf home/. /root/
              buildah run --workingdir /root/.stash/lisp/ $c \
              git clone https://github.com/slime/slime
+	     buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
              buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
              buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
@@ -261,6 +289,12 @@
              buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
              buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
+	     buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
+	     buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
              buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
@@ -277,8 +311,8 @@
     (:build (build-o1))
     (:build-all () #$c=$(podman run -dt o1)
                 echo "building all binary packs with output to ${PACKY_DIST_X86}"
-                podman exec -w /usr/src/infra $c skel build sbcl rocksdb emacs tree-sitter blake3
-                podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs
+                podman exec -w /usr/src/infra $c skel build sbcl rocksdb emacs tree-sitter blake3 zstd bzip2 liburing
+                podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing
                 podman exec -w /usr/src/core $c skel make
                 podman exec -w /usr/src/core $c skel dist
                 podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
@@ -317,10 +351,10 @@
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
 	     buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
-	     buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
-	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
 	     buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+	     buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
 	     buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
 	     buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
