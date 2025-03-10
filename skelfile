@@ -130,7 +130,7 @@
     (:build (build-w1 build-w2 build-w3))
     (:build-all (build-sbcl-w1 build-rocksdb-w1 
                                build-blake3-w1 build-tree-sitter-w1 
-                               build-tree-sitter-langs-w1 build-core-w2
+                               build-tree-sitter-w1sitter-langs-w1 build-core-w2
                                build-emacs-mini-w3)))
  (w1 ()
      (:build () (println "building w1 image")
@@ -220,12 +220,18 @@
              buildah add $c $PACKY_DIST_X86_MUSL/sbcl.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86_MUSL/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86_MUSL/blake3.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/zstd.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/liburing.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah add $c $PACKY_DIST_X86_MUSL/bzip2.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86_MUSL/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
              buildah add $c $PACKY_DIST_X86_MUSL/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-ublksrv-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
              buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
@@ -319,7 +325,10 @@
                 podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86/
-                podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
+		podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
+		podman cp $c:/usr/src/infra/.stash/zstd.tar.zst $PACKY_DIST_X86/
+		podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86/
+		podman cp $c:/usr/src/infra/.stash/liburing.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst $PACKY_DIST_X86/
                 podman stop $c$#)

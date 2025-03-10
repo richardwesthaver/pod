@@ -1,2 +1,2 @@
 FROM fedora:latest
-RUN dnf install -y mercurial git openssh wireguard-tools tar curl make openssl zlib keyutils-libs-devel libssh2-devel gcc gcc-c++ libxkbcommon-devel btrfs-progs-devel snappy-devel gflags-devel
+RUN dnf install -y mercurial git openssh wireguard-tools tar curl make openssl zlib keyutils-libs-devel libssh2-devel gcc gcc-c++ libxkbcommon-devel btrfs-progs-devel snappy-devel gflags-devel libreadline-dev libsndfile

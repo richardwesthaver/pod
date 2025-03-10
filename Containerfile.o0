@@ -1,7 +1,7 @@
 FROM archlinux:latest
 RUN --network=host pacman-key --init -u
 RUN --network=host pacman -Sy --needed archlinux-keyring --noconfirm && pacman -Su --noconfirm
-RUN --network=host pacman -Syu util-linux util-linux-libs base-devel less uutils-coreutils openssl openssh mercurial git liburing wireguard-tools libxcb zstd pacman-contrib --noconfirm
+RUN --network=host pacman -Syu util-linux util-linux-libs base-devel less uutils-coreutils openssl openssh mercurial git wireguard-tools libxcb zstd pacman-contrib libsndfile --noconfirm
 RUN --network=host pacman -Sy uutils-coreutils sysstat iotop imagemagick giflib libgccjit libxaw snappy llvm clang lld liburing libxkbcommon numactl libevdev gflags tbb btrfs-progs --noconfirm
 RUN mkdir -p /usr/share/lisp /usr/local/share/lisp /usr/local/share/rust /opt/store /opt/stash
 RUN ssh-keygen -A
