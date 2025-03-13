@@ -3,7 +3,7 @@
 :name "pod"
 :author "Richard Westhaver"
 :version "0.1.0"
-:vc (:hg "https://vc.compiler.company/comp/pod")
+:vc (:hg "https://vc.compiler.company/infra/pod")
 :bind ((prefix :env "/usr/local")
        (packy-home :env "/opt/core/store/packy")
        (src :env (namestring (merge-pathnames "comp" (user-homedir-pathname))))
@@ -15,10 +15,7 @@
 :components
 ((:containerfile "w0")
  (:containerfile "o0")
- (:containerfile "f0")
- (:containerfile "ubuntu")
- (:containerfile "amazon")
- (:containerfile "archriscv"))
+ (:containerfile "f0"))
 :rules
 ((web ()
       (:build () 
@@ -123,8 +120,6 @@
  ;; (git ()
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
- (amazon ()
-         (:build () #$podman build -f Containerfile.amazon -t amazon$#))
  ;;; workers
  (w ()
     (:build (build-w1 build-w2 build-w3))
@@ -297,6 +292,8 @@
              buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
+	     buildah add $c $PACKY_DIST_X86/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
+	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-ublksrv-pack.sh
 	     buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
 	     buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
 	     buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
@@ -317,8 +314,8 @@
     (:build (build-o1))
     (:build-all () #$c=$(podman run -dt o1)
                 echo "building all binary packs with output to ${PACKY_DIST_X86}"
-                podman exec -w /usr/src/infra $c skel build sbcl rocksdb emacs tree-sitter blake3 zstd bzip2 liburing
-                podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing
+                podman exec -w /usr/src/infra $c skel build sbcl rocksdb blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
+                podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
                 podman exec -w /usr/src/core $c skel make
                 podman exec -w /usr/src/core $c skel dist
                 podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
@@ -327,6 +324,7 @@
                 podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86/
 		podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
 		podman cp $c:/usr/src/infra/.stash/zstd.tar.zst $PACKY_DIST_X86/
+		podman cp $c:/usr/src/infra/.stash/ublksrv.tar.zst $PACKY_DIST_X86/
 		podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86/
 		podman cp $c:/usr/src/infra/.stash/liburing.tar.zst $PACKY_DIST_X86/
                 podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86/
