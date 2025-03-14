@@ -145,7 +145,7 @@
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
-             buildah config --env PATH=$PATH:/usr/local/bin $c
+             buildah config --env PATH="/usr/local/bin:$HOME/.cargo/bin:/usr/bin:$PATH" $c
              buildah commit $c w1
              buildah rm $c$#)
      (:build-sbcl () #$c=$(podman run -dt w1)
