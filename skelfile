@@ -91,12 +91,12 @@
                     --eval '(package-initialize)' \
                     --eval '(setq inferior-lisp-program "sbcl")' \
                     --eval '(setq publish-dir "/tmp/compiler.company")' \
-                    --eval '(setq project-dir "/root/org")' \
+		    --eval '(setq project-dir "/root/org")' \
+		    --eval '(setq company-source-directory "/root/")' \
                     --load /root/.emacs.d/init.el \
                     --eval '(load-library "publish")' \
                     --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
-                    --eval '(slime "sbcl --eval \"(ql:quickload :core)\"")' \
-                    --eval '(publish t t t)'
+                    --eval '(publish t t)'
                     podman exec -w /tmp $c tar -I 'zstd' -cf compiler.company.tar.zst compiler.company
                     podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
                     podman stop $c$#)
