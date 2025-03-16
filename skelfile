@@ -125,11 +125,11 @@
     (:build (build-w1 build-w2 build-w3))
     (:build-all (build-sbcl-w1 build-rocksdb-w1 
                                build-blake3-w1 build-tree-sitter-w1 
-                               build-tree-sitter-w1sitter-langs-w1 build-core-w2
+                               build-tree-sitter-langs-w1 build-core-w2
                                build-emacs-mini-w3)))
  (w1 ()
      (:build () (println "building w1 image")
-             #$buildah build -f Containerfile.w0 -t w0
+             #$podman build -f Containerfile.w0 -t w0
              c=$(buildah from w0)
              buildah add $c $PACKY_HOME/src/sbcl.tar.zst /usr/src/
              buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
@@ -145,7 +145,7 @@
              buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
              buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
              buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
-             buildah config --env PATH="/usr/local/bin:$HOME/.cargo/bin:/usr/bin:$PATH" $c
+             buildah config --env PATH="/usr/local/bin:/usr/bin:/bin:/root/.cargo/bin:/root/go/bin:/root/.local/bin:/usr/local/sbin" --cmd /bin/bash $c
              buildah commit $c w1
              buildah rm $c$#)
      (:build-sbcl () #$c=$(podman run -dt w1)
