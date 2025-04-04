@@ -6,10 +6,10 @@
 :vc (:hg "https://vc.compiler.company/infra/pod")
 :bind 
 ((prefix :env "/usr/local")
- (packy-home :env "/opt/core/store/packy")
+ (packy-home :env "/opt/store/packy")
  (src :env (namestring (merge-pathnames "comp" (user-homedir-pathname))))
- (packy-dist-x86 :env "/opt/core/store/packy/dist/x86_64-unknown-linux-gnu")
- (packy-dist-x86-musl :env "/opt/core/store/packy/dist/x86_64-musl-linux-gnu")
+ (packy-dist-x86 :env "/opt/store/packy/dist/x86_64-unknown-linux-gnu")
+ (packy-dist-x86-musl :env "/opt/store/packy/dist/x86_64-musl-linux-gnu")
  (vc-user :env "vc")
  (vc-home :env "/home/vc")
  (vc-id :env 842))
@@ -69,9 +69,9 @@
   (:build () 
    (println "building emacs image")
    #$c=$(buildah from o1)
-   buildah add $c /opt/core/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
+   buildah add $c /opt/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
-   buildah add $c /opt/core/store/packy/src/core.tar.zst /usr/src/
+   buildah add $c /opt/store/packy/src/core.tar.zst /usr/src/
    buildah run --workingdir /usr/src/core/emacs/ $c skel install
    buildah config --workingdir /root/ --entrypoint /usr/local/bin/emacs $c
    buildah run -t $c /usr/local/bin/emacs --batch \
@@ -102,7 +102,6 @@
    podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
    podman stop $c$#)
   (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
-
  (vc ()
   (:build () (println "building vc image")
    #$c=$(buildah from w0)
@@ -126,6 +125,7 @@
   (:build (build-w1 build-w2 build-w3))
   (:build-all (build-sbcl-w1 build-rocksdb-w1 
                build-blake3-w1 build-tree-sitter-w1 
+               build-zstd-w1 build-ublksrv-w1 build-bzip2-w1 build-liburing-w1
                build-tree-sitter-langs-w1 build-core-w2
                build-emacs-mini-w3)))
  (w1 ()
@@ -290,7 +290,6 @@
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
    buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
-   buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
    buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
    buildah add $c $PACKY_DIST_X86/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
@@ -299,16 +298,20 @@
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
    buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
+   buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
+   buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
+   buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
    buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
+
    buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
    buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-   podman exec -w /usr/src/infra $c skel install rustup cargo-tools
-   buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
 
-   buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew :core))' --quit
+   podman exec -w /usr/src/infra $c skel install rustup cargo-tools
+
+   buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
+
    buildah commit $c o1
    buildah rm $c$#))
  (o ()
@@ -317,8 +320,10 @@
    echo "building all binary packs with output to ${PACKY_DIST_X86}"
    podman exec -w /usr/src/infra $c skel build sbcl rocksdb blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
    podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
+   podman exec -w /usr/src/core $c skel build c
+   podman exec -w /usr/src/core $c skel install c
    podman exec -w /usr/src/core $c skel make
-   podman exec -w /usr/src/core $c skel dist
+   podman exec -w /usr/src/core $c skel make dist
    podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86/
