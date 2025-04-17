@@ -121,6 +121,12 @@
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
  ;;; workers
+ (worker ()
+  #$c=$(buildah from scratch)
+  buildah add $c /usr/bin/core /root/
+  buildah config --workingdir /root --entrypoint "./core" $c
+  buildah commit $c worker
+  buildah rm $c$#)
  (w ()
   (:build (build-w1 build-w2 build-w3))
   (:build-all (build-sbcl-w1 build-rocksdb-w1 
@@ -356,6 +362,11 @@
    buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
    buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
    buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
+   buildah commit $c f1
+   buildah rm $c$#))
+ (f2 ()
+  (:build ()
+   #$c=$(buildah from f1)
    buildah run --workingdir /usr/src $c cp -rf home/. /root/
    buildah run --workingdir /root/.stash/lisp/ $c git clone https://github.com/slime/slime
    buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
@@ -382,7 +393,16 @@
    buildah run --workingdir /usr/src/infra $c skel install rustup
    buildah run $c sh . "$HOME/.cargo/env"
    buildah run --workingdir /usr/src/infra $c skel install cargo-tools
-   buildah commit $c f1
+   buildah commit $c f2
    buildah rm $c$#))
+ (op ()
+  #$c=$(buildah from fedora/fedora)
+  buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
+  buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
+  buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
+
+  buildah config --cmd /bin/core $c
+  buildah commit $c c
+  buildah rm $c$#)
  (f ()
   (:build (build-f1))))

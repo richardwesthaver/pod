@@ -1,6 +1,5 @@
 FROM fedora:latest
 RUN dnf install -y mercurial git openssh wireguard-tools tar curl make openssl zlib keyutils-libs-devel \
     libssh2-devel gcc gcc-c++ libxkbcommon-devel btrfs-progs-devel snappy-devel gflags-devel bzip2-devel \
-    numactl-devel tbb-devel liburing-devel
-# libreadline-devel
+    numactl-devel tbb-devel liburing-devel libreadline-devel
 RUN ln -sf /usr/lib64/libbz2.so.1.0.8 /usr/lib64/libbz2.so.1.0
