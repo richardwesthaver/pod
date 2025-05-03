@@ -315,9 +315,8 @@
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
 
    buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
-   buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-
-   podman exec -w /usr/src/infra $c skel install rustup cargo-tools
+   buildah run --workingdir /usr/src/infra/ $c sh scripts/quicklisp-install.sh
+   buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
 
    buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
 
