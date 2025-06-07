@@ -9,7 +9,7 @@
  (packy-home :env "/opt/store/packy")
  (src :env (namestring (merge-pathnames "comp" (user-homedir-pathname))))
  (packy-dist-x86 :env "/opt/store/packy/dist/x86_64-unknown-linux-gnu")
- (packy-dist-x86-musl :env "/opt/store/packy/dist/x86_64-musl-linux-gnu")
+ (packy-dist-x86-musl :env "/opt/store/packy/dist/x86_64-unknown-linux-musl")
  (vc-user :env "vc")
  (vc-home :env "/home/vc")
  (vc-id :env 842)
@@ -72,6 +72,7 @@
   (:build () 
    (println "building emacs image")
    #$c=$(buildah from o3)
+   buildah run $c pacman -Sy offlineimap notmuch sqlite --noconfirm
    buildah add $c /opt/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
    buildah add $c /opt/store/packy/src/core.tar.zst /usr/src/
