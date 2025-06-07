@@ -71,7 +71,7 @@
  (emacs ()
   (:build () 
    (println "building emacs image")
-   #$c=$(buildah from o1)
+   #$c=$(buildah from o3)
    buildah add $c /opt/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
    buildah add $c /opt/store/packy/src/core.tar.zst /usr/src/
@@ -286,25 +286,27 @@
    #$podman build -f Containerfile.o0 -t o0
    c=$(buildah from o0)
    buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
-   buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
    buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
    buildah run --workingdir /usr/src $c cp -rf home/. /root/
    buildah run --workingdir /root/.stash/lisp/ $c \
    git clone https://github.com/slime/slime
    buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-   buildah run --workingdir /usr/src/infra/ $c skel install quicklisp
-   # buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
-   buildah run --workingdir /usr/src/core $c core --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
    buildah commit $c o1
    buildah rm $c$#))
  (o2 ()
   (:build () (println "building o2 image")
    #$c=$(buildah from o1)
+   buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
    buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
    buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
+   buildah commit $c o2
+   buildah rm $c$#))
+ (o3 ()
+  (:build () (println "building o3 image")
+   #$c=$(buildah from o2)
    buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
    buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
@@ -315,31 +317,33 @@
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-ublksrv-pack.sh
    buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
-   buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
    buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
    buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
    buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-   
+   # buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
+   # buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
+   buildah commit $c o3
+   buildah rm $c$#))
  (o ()
-  (:build (build-o1))
-  (:build-all () #$c=$(podman run -dt o1)
+  (:build (build-o1 build-o2 build-o3))
+  (:build-libs () #$c=$(podman run -dt o2)
    echo "building all binary packs with output to ${PACKY_DIST_X86}"
-   podman exec -w /usr/src/infra $c skel build sbcl rocksdb blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
-   podman exec -w /usr/src/infra $c skel dist rocksdb sbcl blake3 tree-sitter langs-tree-sitter emacs zstd bzip2 liburing ublksrv
-   podman exec -w /usr/src/core $c skel build c
-   podman exec -w /usr/src/core $c skel install c
-   podman exec -w /usr/src/core $c skel make
-   podman exec -w /usr/src/core $c skel make dist
-   podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
+   # blake3 bzip2 emacs
+   podman exec -w /usr/src/infra $c skel build sbcl rocksdb tree-sitter langs-tree-sitter zstd liburing ublksrv
+   podman exec -w /usr/src/infra $c skel dist rocksdb sbcl tree-sitter langs-tree-sitter zstd liburing ublksrv
+   # podman exec -w /usr/src/core $c skel build c
+   # podman exec -w /usr/src/core $c skel install c
+   # podman exec -w /usr/src/core $c skel make
+   # podman exec -w /usr/src/core $c skel make dist
+   # podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
+   # podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
+   # podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/zstd.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/ublksrv.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86/
+   # podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/liburing.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86/
    podman cp $c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst $PACKY_DIST_X86/
@@ -386,8 +390,7 @@
   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
   buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-  buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
-  buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
+  buildah run --workingdir /usr/src/infra/ $c skel install quicklisp
   buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
   buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
   buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
