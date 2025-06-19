@@ -284,52 +284,46 @@
  ;;; operator
  (o1 ()
   (:build () (println "building o1 image")
-   #$podman build -f Containerfile.o0 -t o0
-   c=$(buildah from o0)
-   buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
-   buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
-   buildah run --workingdir /usr/src $c cp -rf home/. /root/
-   buildah run --workingdir /root/.stash/lisp/ $c \
-   git clone https://github.com/slime/slime
-   buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-   buildah commit $c o1
-   buildah rm $c$#))
+   (podman-build :file "Containerfile.o0" :tag "o0")
+   (with-buildah (c "o0" :commit "o1")
+    (buildah-add (merge-env-pathnames "src/infra.tar.zst" "PACKY_HOME") "/usr/src/")
+    (buildah-add (merge-env-pathnames "src/home/operator.tar.zst" "PACKY_HOME") "/usr/src/")
+    (buildah-run '("cp" "-rf" "home/." "/root/") :dir "/usr/src")
+    (buildah-run '("git" "clone" "https://github.com/slime/slime") :dir "/root/.stash/lisp/")
+    (buildah-add (merge-env-pathnames "core.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("scripts/install-core-pack.sh")
+     :dir "/usr/src/infra" 
+     :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX")))))))
  (o2 ()
   (:build () (println "building o2 image")
-   #$c=$(buildah from o1)
-   buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
-   buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
-   buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
-   buildah commit $c o2
-   buildah rm $c$#))
+   (with-buildah (c "o1" :commit "o2")
+    (buildah-add "$PACKY_HOME/src/core.tar.zst" "/usr/src/")
+    (buildah-add "$PACKY_DIST_X86/zstd.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-zstd-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/sbcl.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-sbcl-pack.sh") :dir "/usr/src/infra/"))))
  (o3 ()
   (:build () (println "building o3 image")
-   #$c=$(buildah from o2)
-   buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
-   buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
-   buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
-   buildah add $c $PACKY_DIST_X86/ublksrv.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-ublksrv-pack.sh
-   buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
-   buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
-   buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-   # buildah run --workingdir /usr/src/infra $c skel install rustup cargo-tools
-   # buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad))' --quit
-   buildah commit $c o3
-   buildah rm $c$#))
+   (with-buildah (c "o2" :commit "o3")
+    (buildah-add "$PACKY_DIST_X86/tree-sitter.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-tree-sitter-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/tree-sitter-langs.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-tree-sitter-langs-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/liburing.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-liburing-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/ublksrv.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-ublksrv-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/bzip2.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-bzip2-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/blake3.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-blake3-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "$PACKY_DIST_X86/rocksdb.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-rocksdb-pack.sh") :dir "/usr/src/infra/"))))
  (o ()
   (:build (build-o1 build-o2 build-o3))
-  (:build-libs () #$c=$(podman run -dt o2)
-   echo "building all binary packs with output to ${PACKY_DIST_X86}"
+  (:build-libs () 
+   (log:info! "building all binary packs with output to ~A" (sb-posix:getenv "PACKY_DIST_X86"))
+   #$c=$(podman run -dt o2)
    # blake3 bzip2 emacs
    podman exec -w /usr/src/infra $c skel build sbcl rocksdb tree-sitter langs-tree-sitter zstd liburing ublksrv
    podman exec -w /usr/src/infra $c skel dist rocksdb sbcl tree-sitter langs-tree-sitter zstd liburing ublksrv
