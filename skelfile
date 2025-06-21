@@ -59,7 +59,7 @@
    buildah rm $c$#))
  (mail ()
   (:build () 
-   (println "building mail image")
+   (info! "building mail image")
    #$c=$(buildah from o1)               
    buildah run --network=host $c pacman -Sy inetutils --noconfirm
    buildah run $c curl --proto '=https' --tlsv1.2 -sSf https://get.stalw.art/install.sh -o install.sh
@@ -67,45 +67,49 @@
    buildah config --entrypoint sh --cmd ./install.sh $c
    buildah commit $c mail
    buildah rm $c$#)
-  (:run () #$podman run --name mail --replace -dt -p 8080 --systemd=true mail$#))
+  (:run () 
+   (podman-run :name "mail" :container "mail" 
+    :replace t :detach t :tty t :systemd true))) ;; -p 8080
  (emacs ()
   (:build () 
-   (println "building emacs image")
-   #$c=$(buildah from o3)
-   buildah run $c pacman -Sy offlineimap notmuch sqlite --noconfirm
-   buildah add $c /opt/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst /usr/src/infra/.stash/tmp/
-   buildah run --workingdir /usr/src/infra/ $c sh scripts/install-emacs-pack.sh
-   buildah add $c /opt/store/packy/src/core.tar.zst /usr/src/
-   buildah run --workingdir /usr/src/core/emacs/ $c skel install
-   buildah config --workingdir /root/ --entrypoint /usr/local/bin/emacs $c
-   buildah run -t $c /usr/local/bin/emacs --batch \
-   -L /root/.stash/lisp/slime/ \
-   -L /root/.emacs.d/lib/ \
-   --eval '(setq user-custom-file "/root/.emacs.d/operator.el")' \
-   --load /root/.emacs.d/init.el
-   buildah commit $c emacs
-   buildah rm $c$#)
-  (:build-mini () #$c=$(podman run -dt o1)
-   echo "building emacs-mini with output to ${PACKY_DIST_X86_MUSL}"
-   podman exec -w /usr/src/infra $c skel build mini-emacs
-   podman exec -w /usr/src/infra $c skel dist mini-emacs
-   podman cp $c:/usr/src/infra/.stash/emacs-mini.tar.zst $PACKY_DIST_X86/$#)
-  (:build-org () #$c=$(podman run -dt emacs --cmd sh)
-   podman cp $SRC/ $c:/root/
-   podman exec -t -w /root $c /usr/local/bin/emacs --batch \
-   --eval '(package-initialize)' \
-   --eval '(setq inferior-lisp-program "sbcl")' \
-   --eval '(setq publish-dir "/tmp/compiler.company")' \
-   --eval '(setq project-dir "/root/org")' \
-   --eval '(setq company-source-directory "/root/")' \
-   --load /root/.emacs.d/init.el \
-   --eval '(load-library "publish")' \
-   --eval '(org-babel-lob-ingest "/root/org/meta/babel.org")' \
-   --eval '(publish t t)'
-   podman exec -w /tmp $c tar -I 'zstd' -cf compiler.company.tar.zst compiler.company
-   podman cp $c:/tmp/compiler.company.tar.zst $PACKY_HOME/doc/html/compiler.company.tar.zst
-   podman stop $c$#)
-  (:run () #$podman run --name emacs --replace -dt --systemd=true emacs$#))
+   (info! "building emacs image")
+   (with-builda (c "o3")
+    (buildah-run "pacman -Sy offlineimap notmuch sqlite --noconfirm")
+    (buildah-add "/opt/store/packy/dist/x86_64-unknown-linux-gnu/emacs.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-run '("sh" "scripts/install-emacs-pack.sh") :dir "/usr/src/infra/")
+    (buildah-add "/opt/store/packy/src/core.tar.zst" "/usr/src/")
+    (buildah-run "skel install" :dir "/usr/src/core/emacs/")
+    (buildah-config "--workingdir" "/root/" "--entrypoint" "/usr/local/bin/emacs")
+    (buildah-run '("/usr/local/bin/emacs" "--batch" 
+                   "-L" "/root/.stash/lisp/slime/"
+                   "-L" "/root/.emacs.d/lib/"
+                   "--eval" "'(setq user-custom-file \"/root/.emacs.d/operator.el\")'"
+                   "--load /root/.emacs.d/init.el"))))
+  (:build-mini () 
+   (with-container (c "o1" :detach t :tty t)
+    (info! "building emacs-mini with output to ~A" (sb-posix:getenv "PACKY_DIST_X86"))
+    (podman-exec "skel build mini-emacs" :dir "/usr/src/infra")
+    (podman-exec "skel dist mini-emacs" :dir "/usr/src/infra")
+    (podman-cp "$c:/usr/src/infra/.stash/emacs-mini.tar.zst" "$PACKY_DIST_X86/")))
+  (:build-org () 
+   (with-container (c "emacs" :detach t :tty t :cmd "sh" :stop t)
+    (podman-cp "$SRC/" "$c:/root/")
+    (podman-exec 
+     '("/usr/local/bin/emacs" "--batch"
+       "--eval" "'(package-initialize)'"
+       "--eval" "'(setq inferior-lisp-program \"sbcl\")'"
+       "--eval" "'(setq publish-dir \"/tmp/compiler.company\")'"
+       "--eval" "'(setq project-dir \"/root/org\")'"
+       "--eval" "'(setq company-source-directory \"/root/\")'"
+       "--load" "/root/.emacs.d/init.el"
+       "--eval" "'(load-library \"publish\")'"
+       "--eval" "'(org-babel-lob-ingest \"/root/org/meta/babel.org\")'"
+       "--eval" "'(publish t t)")
+     :dir "/root")
+    (podman-exec "tar -I 'zstd' -cf compiler.company.tar.zst compiler.company" :dir "/tmp")
+    (podman-cp "$c:/tmp/compiler.company.tar.zst" 
+     (merge-env-pathnames "doc/html/compiler.company.tar.zst" "PACKY_HOME"))))
+  (:run () (pod:podman-run :name "emacs" :container "emacs" :replace t :detach t :tty t :systemd t)))
  (vc ()
   (:build () (println "building vc image")
    #$c=$(buildah from w0)
@@ -126,18 +130,17 @@
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
  ;;; workers
  (worker ()
-  #$c=$(buildah from scratch)
-  buildah add $c /usr/bin/core /root/
-  buildah config --workingdir /root --entrypoint "./core" $c
-  buildah commit $c worker
-  buildah rm $c$#)
+  (with-buildah (c "scratch" :commit "worker")
+   (buildah-add "/usr/bin/core" "/bin/")
+   (buildah-config "--workingdir" "/" "--entrypoint" "/bin/core")))
  (w ()
   (:build (build-w1 build-w2 build-w3))
-  (:build-all (build-sbcl-w1 build-rocksdb-w1 
-               build-blake3-w1 build-tree-sitter-w1 
-               build-zstd-w1 build-ublksrv-w1 build-bzip2-w1 build-liburing-w1
-               build-tree-sitter-langs-w1 build-core-w2
-               build-emacs-mini-w3)))
+  (:build-all 
+   (build-sbcl-w1 build-rocksdb-w1 
+    build-blake3-w1 build-tree-sitter-w1 
+    build-zstd-w1 build-ublksrv-w1 build-bzip2-w1 build-liburing-w1
+    build-tree-sitter-langs-w1 build-core-w2
+    build-emacs-mini-w3)))
  (w1 ()
   (:build () (println "building w1 image")
    #$podman build -f Containerfile.w0 -t w0
@@ -322,78 +325,65 @@
  (o ()
   (:build (build-o1 build-o2 build-o3))
   (:build-libs () 
-   (log:info! "building all binary packs with output to ~A" (sb-posix:getenv "PACKY_DIST_X86"))
-   #$c=$(podman run -dt o2)
-   # blake3 bzip2 emacs
-   podman exec -w /usr/src/infra $c skel build sbcl rocksdb tree-sitter langs-tree-sitter zstd liburing ublksrv
-   podman exec -w /usr/src/infra $c skel dist rocksdb sbcl tree-sitter langs-tree-sitter zstd liburing ublksrv
-   # podman exec -w /usr/src/core $c skel build c
-   # podman exec -w /usr/src/core $c skel install c
-   # podman exec -w /usr/src/core $c skel make
-   # podman exec -w /usr/src/core $c skel make dist
-   # podman cp $c:/usr/src/core/.stash/core.tar.zst $PACKY_DIST_X86/
-   # podman cp $c:/usr/src/infra/.stash/emacs.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/rocksdb.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/sbcl.tar.zst $PACKY_DIST_X86/
-   # podman cp $c:/usr/src/infra/.stash/blake3.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/zstd.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/ublksrv.tar.zst $PACKY_DIST_X86/
-   # podman cp $c:/usr/src/infra/.stash/bzip2.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/liburing.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/tree-sitter.tar.zst $PACKY_DIST_X86/
-   podman cp $c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst $PACKY_DIST_X86/
-   podman stop $c$#)
-  (:build-src () #$c=$(podman run -dt o1)
-   echo "building all source packs with output to ${PACKY_HOME}/src"
-   podman cp --overwrite $SRC/infra/. $c:/usr/src/infra
-   podman cp --overwrite $SRC/core/. $c:/usr/src/core
-   podman cp --overwrite $SRC/demo/. $c:/usr/src/demo
-   podman cp --overwrite $SRC/org/. $c:/usr/src/org
-   podman exec -w /usr/src/infra $c skel dist all-source
-   podman cp $c:/usr/src/infra/infra.tar.zst $PACKY_HOME/src/
-   podman cp $c:/usr/src/infra/core.tar.zst $PACKY_HOME/src/
-   podman cp $c:/usr/src/infra/demo.tar.zst $PACKY_HOME/src/
-   podman cp $c:/usr/src/infra/home.tar.zst $PACKY_HOME/src/
-   podman cp $c:/usr/src/infra/org.tar.zst $PACKY_HOME/src/
-   podman stop $c$#))
+   (info! "building all binary packs with output to ~A" (sb-posix:getenv "PACKY_DIST_X86"))
+   (with-container (c "o2" :detach t :tty t :stop t)
+    (podman-exec "skel build sbcl rocksdb tree-sitter langs-tree-sitter zstd liburing" :dir "/usr/src/infra")
+    (podman-exec "skel dist rocksdb sbcl tree-sitter langs-tree-sitter zstd liburing" :dir "/usr/src/infra")
+    (podman-cp "$c:/usr/src/infra/.stash/rocksdb.tar.zst" "$PACKY_DIST_X86/")
+    (podman-cp "$c:/usr/src/infra/.stash/sbcl.tar.zst" "$PACKY_DIST_X86/")
+    (podman-cp "$c:/usr/src/infra/.stash/zstd.tar.zst" "$PACKY_DIST_X86/")
+    (podman-cp "$c:/usr/src/infra/.stash/liburing.tar.zst" "$PACKY_DIST_X86/")
+    (podman-cp "$c:/usr/src/infra/.stash/tree-sitter.tar.zst" "$PACKY_DIST_X86/")
+    (podman-cp "$c:/usr/src/infra/.stash/tree-sitter-langs.tar.zst" "$PACKY_DIST_X86/")))
+  (:build-src ()
+   (info! "building all source packs with output to ${PACKY_HOME}/src")
+   (with-container (c "o1" :detach t :tty t :stop t)
+    (flet ((cp (src dst) (podman-cp src dst :overwrite t)))
+     (cp (merge-env-pathnames "infra/." "SRC") "$c:/usr/src/infra")
+     (cp (merge-env-pathnames "core/." "SRC") "$c:/usr/src/core")
+     (cp (merge-env-pathnames "demo/." "SRC") "$c:/usr/src/demo")
+     (cp (merge-env-pathnames "org/." "SRC") "$c:/usr/src/org")
+     (podman-exec "skel dist all-source" :dir "/usr/src/infra")
+     (let ((src (merge-env-pathnames "src/" "PACKY_HOME")))
+      (cp "$c:/usr/src/infra/infra.tar.zst" src)
+      (cp "$c:/usr/src/infra/core.tar.zst" src)
+      (cp "$c:/usr/src/infra/demo.tar.zst" src)
+      (cp "$c:/usr/src/infra/home.tar.zst" src)
+      (cp "$c:/usr/src/infra/org.tar.zst" src))))))
  (f1 ()
   (:build ()
-   #$podman build -f Containerfile.f0 -t f0 --no-cache
-   c=$(buildah from f0)
-   buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
-   buildah add $c $PACKY_HOME/src/core.tar.zst /usr/src/
-   buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
-   buildah commit $c f1
-   buildah rm $c$#))
+   (podman-build :file "Containerfile.f0" :tag "f0" :no-cache t)
+   (with-buildah (c "f0" :commit "f1")
+    (buildah-add (merge-env-pathnames "src/infra.tar.zst" "PACKY_HOME") "/usr/src/")
+    (buildah-add (merge-env-pathnames "src/core.tar.zst" "PACKY_HOME") "/usr/src/")
+    (buildah-add (merge-env-pathnames "src/home/operator.tar.zst" "PACKY_HOME") "/usr/src/"))))
  (f2 ()
-  #$c=$(buildah from f1)
-  buildah run --workingdir /usr/src $c cp -rf home/. /root/
-  buildah run --workingdir /root/.stash/lisp/ $c git clone https://github.com/slime/slime
-  buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
-  buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
-  buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
-  buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
-  buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
-  buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
-  buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
-  buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-  buildah run --workingdir /usr/src/infra/ $c skel install quicklisp
-  buildah run --workingdir /usr/src/core $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
-  buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-  buildah run --workingdir /usr/src/infra $c skel install rustup
-  buildah run $c sh . "$HOME/.cargo/env"
-  buildah run --workingdir /usr/src/infra $c skel install cargo-tools
-  buildah commit $c f2
-  buildah rm $c$#)
+  (with-buildah (c "f1" :commit "f2")
+   (pod:buildah-run "cp -rf home/. /root/" :dir "/usr/src")
+   (buildah-run "git clone https://github.com/slime/slime" :dir "/root/.stash/lisp/")
+   (buildah-add (merge-env-pathnames "sbcl.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-sbcl-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "tree-sitter.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-tree-sitter-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "tree-sitter-langs.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-tree-sitter-langs-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "blake3.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-blake3-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "liburing.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-liburing-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "bzip2.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-bzip2-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "zstd.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-zstd-pack.sh" :dir "/usr/src/infra/")
+   (buildah-add (merge-env-pathnames "rocksdb.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run "sh scripts/install-rocksdb-pack.sh" :dir "/usr/src/infra/")
+   (buildah-run "skel install quicklisp" :dir "/usr/src/infra/")
+   (buildah-run "sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit" :dir "/usr/src/core")
+   (buildah-add (merge-env-pathnames "core.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
+   (buildah-run  "scripts/install-core-pack.sh" :dir "/usr/src/infra" :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX"))))
+   (buildah-run "skel install rustup" :dir "/usr/src/infra")
+   (buildah-run "sh ." :dir "$HOME/.cargo/env")
+   (buildah-run "skel install cargo-tools" :dir "/usr/src/infra")))
  (op (build-f1)
   #$c=$(buildah from f1)
   buildah run $c groupadd operator
