@@ -18,8 +18,7 @@
  (operator-id :env 1100))
 :components
 ((:containerfile "w0")
- (:containerfile "o0")
- (:containerfile "f0"))
+ (:containerfile "o0"))
 :rules
 ((web ()
   (:build () 
@@ -294,27 +293,27 @@
  (o2 ()
   (:build () (println "building o2 image")
    (with-buildah (c "o1" :commit "o2")
-    (buildah-add "$PACKY_HOME/src/core.tar.zst" "/usr/src/")
-    (buildah-add "$PACKY_DIST_X86/zstd.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "src/core.tar.zst" "PACKY_HOME") "/usr/src/")
+    (buildah-add (merge-env-pathnames "zstd.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-zstd-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/sbcl.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "sbcl.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-sbcl-pack.sh") :dir "/usr/src/infra/"))))
  (o3 ()
   (:build () (println "building o3 image")
    (with-buildah (c "o2" :commit "o3")
-    (buildah-add "$PACKY_DIST_X86/tree-sitter.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "tree-sitter.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-tree-sitter-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/tree-sitter-langs.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "tree-sitter-langs.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-tree-sitter-langs-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/liburing.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "liburing.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-liburing-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/ublksrv.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "ublksrv.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-ublksrv-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/bzip2.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "bzip2.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-bzip2-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/blake3.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "blake3.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-blake3-pack.sh") :dir "/usr/src/infra/")
-    (buildah-add "$PACKY_DIST_X86/rocksdb.tar.zst" "/usr/src/infra/.stash/tmp/")
+    (buildah-add (merge-env-pathnames "rocksdb.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
     (buildah-run '("sh" "scripts/install-rocksdb-pack.sh") :dir "/usr/src/infra/"))))
  (o ()
   (:build (build-o1 build-o2 build-o3))
@@ -343,77 +342,4 @@
       (cp "$c:/usr/src/infra/core.tar.zst" src)
       (cp "$c:/usr/src/infra/demo.tar.zst" src)
       (cp "$c:/usr/src/infra/home.tar.zst" src)
-      (cp "$c:/usr/src/infra/org.tar.zst" src))))))
- (f1 ()
-  (:build ()
-   (podman-build :file "Containerfile.f0" :tag "f0" :no-cache t)
-   (with-buildah (c "f0" :commit "f1")
-    (buildah-add (merge-env-pathnames "src/infra.tar.zst" "PACKY_HOME") "/usr/src/")
-    (buildah-add (merge-env-pathnames "src/core.tar.zst" "PACKY_HOME") "/usr/src/")
-    (buildah-add (merge-env-pathnames "src/home/operator.tar.zst" "PACKY_HOME") "/usr/src/"))))
- (f2 ()
-  (with-buildah (c "f1" :commit "f2")
-   (pod:buildah-run "cp -rf home/. /root/" :dir "/usr/src")
-   (buildah-run "git clone https://github.com/slime/slime" :dir "/root/.stash/lisp/")
-   (buildah-add (merge-env-pathnames "sbcl.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-sbcl-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "tree-sitter.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-tree-sitter-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "tree-sitter-langs.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-tree-sitter-langs-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "blake3.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-blake3-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "liburing.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-liburing-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "bzip2.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-bzip2-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "zstd.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-zstd-pack.sh" :dir "/usr/src/infra/")
-   (buildah-add (merge-env-pathnames "rocksdb.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run "sh scripts/install-rocksdb-pack.sh" :dir "/usr/src/infra/")
-   (buildah-run "skel install quicklisp" :dir "/usr/src/infra/")
-   (buildah-run "sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit" :dir "/usr/src/core")
-   (buildah-add (merge-env-pathnames "core.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/tmp/")
-   (buildah-run  "scripts/install-core-pack.sh" :dir "/usr/src/infra" :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX"))))
-   (buildah-run "skel install rustup" :dir "/usr/src/infra")
-   (buildah-run "sh ." :dir "$HOME/.cargo/env")
-   (buildah-run "skel install cargo-tools" :dir "/usr/src/infra")))
- (op (build-f1)
-  #$c=$(buildah from f1)
-  buildah run $c groupadd operator
-  buildah run $c useradd -U -G operator,wheel -s /usr/bin/bash -u $OPERATOR_ID -d $OPERATOR_HOME $OPERATOR_USER
-  buildah add $c $PACKY_HOME/src/infra.tar.zst /usr/src/
-  buildah run --workingdir /usr/src/infra $c mkdir -p .stash/tmp
-  buildah add $c $PACKY_DIST_X86/sbcl.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-sbcl-pack.sh
-  buildah add $c $PACKY_DIST_X86/tree-sitter.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-pack.sh
-  buildah add $c $PACKY_DIST_X86/tree-sitter-langs.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-tree-sitter-langs-pack.sh
-  buildah add $c $PACKY_DIST_X86/blake3.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-blake3-pack.sh
-  buildah add $c $PACKY_DIST_X86/liburing.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-liburing-pack.sh
-
-  buildah add $c $PACKY_DIST_X86/bzip2.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-bzip2-pack.sh
-  buildah add $c $PACKY_DIST_X86/zstd.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-zstd-pack.sh
-  buildah add $c $PACKY_DIST_X86/rocksdb.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra/ $c sh scripts/install-rocksdb-pack.sh
-  buildah run --network host --workingdir /usr/src/infra/.stash/ $c curl -O https://beta.quicklisp.org/quicklisp.lisp
-  buildah add $c $PACKY_DIST_X86/core.tar.zst /usr/src/infra/.stash/tmp/
-  buildah run --workingdir /usr/src/infra -e PREFIX=$PREFIX $c scripts/install-core-pack.sh
-  buildah run --workingdir /usr/src/infra/ --network host $c sh scripts/quicklisp-install.sh
-  buildah add $c $PACKY_HOME/src/home/operator.tar.zst /usr/src/
-  buildah run $c cp -rf /usr/src/home/. $OPERATOR_HOME/
-  buildah run $c chown -R $OPERATOR_USER $OPERATOR_HOME
-  buildah run $c rm -rf /usr/src/home
-  buildah config --workingdir $OPERATOR_HOME --user $OPERATOR_USER --cmd /usr/local/bin/core $c
-  buildah run $c mkdir -p $OPERATOR_HOME/.stash/lisp/
-  buildah run --workingdir $OPERATOR_HOME/.stash/lisp/ $c git clone https://github.com/slime/slime
-  buildah add $c $PACKY_HOME/src/core.tar.zst $OPERATOR_HOME/.stash/lisp/
-  buildah run $c sbcl --eval '(ql:quickload (list :cl-ppcre :ironclad :swank-client :swank-crew))' --quit
-  buildah commit $c op
-  buildah rm $c$#)
- (f () (f1)))
+      (cp "$c:/usr/src/infra/org.tar.zst" src)))))))
