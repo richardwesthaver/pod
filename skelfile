@@ -17,8 +17,7 @@
  (operator-home :env "/home/op")
  (operator-id :env 1100))
 :components
-((:containerfile "w0")
- (:containerfile "o0"))
+((:containerfile "o0"))
 :rules
 ((web ()
   (:build () 
@@ -105,10 +104,10 @@
   (:run () (pod:podman-run :name "emacs" :container "emacs" :replace t :detach t :tty t :systemd t)))
  (vc ()
   (:build () (println "building vc image")
-   #$c=$(buildah from w0)
-   buildah run $c apk add py3-pygments py3-pygit2 py3-dulwich py3-pip apache2-utils uwsgi
-   buildah run --user root $c addgroup $VC_USER
-   buildah run --user root $c adduser -G vc -S -s /usr/bin/bash -u $VC_ID $VC_USER
+   #$c=$(buildah from o0)
+   buildah run $c apk add python-pygments python-pygit2 python-dulwich python-pip uwsgi
+   buildah run --user root $c groupadd $VC_USER
+   buildah run --user root $c useradd -G vc -S -s /usr/bin/bash -u $VC_ID $VC_USER
    buildah config --user $VC_USER --workingdir $VC_HOME --entrypoint "./serve.sh" -p 8888 $c
    buildah run $c pip install --user --break-system-packages hg-evolve
    buildah run $c mkdir $VC_HOME/.stash $VC_HOME/src

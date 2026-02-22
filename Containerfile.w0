@@ -1,6 +1,0 @@
-FROM alpine:latest
-RUN apk update
-RUN apk add --no-cache openssh zstd zstd-dev mercurial wireguard-tools libc6-compat coreutils tar libstdc++
-RUN apk add build-base bash curl make git linux-headers openssl-dev pkgconf m4 mercurial zlib-dev keyutils-dev libssh2-dev libtool autoconf automake gcc libgccjit-dev texinfo libsndfile-dev meson shadow
-RUN chsh -s /bin/bash
-RUN mkdir /usr/local/include
