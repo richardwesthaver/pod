@@ -140,7 +140,8 @@
      :dir "/usr/src/infra" 
      :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX"))))
     (buildah-run '("chmod" "777" "/usr/bin/core"))
-    (buildah-run '("mkdir" "-pv" "/opt/store/packy/dist/x86_64-unknown-linux-gnu" "/opt/store/packy/src")))))
+    ;; (buildah-run '("mkdir" "-pv" "/opt/store/packy/dist/x86_64-unknown-linux-gnu" "/opt/store/packy/src")))
+    )))
  (o2 ()
   (:build () (println "building o2 image")
    (with-buildah (c "o1" :commit "o2")
