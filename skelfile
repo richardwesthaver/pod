@@ -21,11 +21,11 @@
 ((web ()
   (:build () 
    (info! "building web image")
-   (with-buildah (c "w3")
+   (with-buildah (c "o3")
     (buildah-add (merge-env-pathnames "src/home/web.tar.zst" "PACKY_HOME") "/root/")
     (buildah-add (merge-env-pathnames "src/org.tar.zst" "PACKY_HOME") "/home/web/org/")
     (buildah-add (merge-env-pathnames "doc/html/compiler.company.tar.zst" "PACKY_HOME") "/srv/http/compiler.company")
-    (buildah-run "apk add go")
+    (buildah-run "pacman -Sy go --noconfirm")
     (buildah-config "--env" "GOBIN=/usr/local/bin")
     (buildah-run '("skel" "build" "caddy") :dir "/usr/src/infra/")
     (buildah-run '("skel" "install" "caddy") :dir "/usr/src/infra/")
@@ -52,7 +52,7 @@
   (:build () 
    (info! "building mail image")
    #$c=$(buildah from o1)               
-   buildah run --network=host $c pacman -Sy inetutils --noconfirm
+   buildah run $c pacman -Sy inetutils --noconfirm
    buildah run $c curl --proto '=https' --tlsv1.2 -sSf https://get.stalw.art/install.sh -o install.sh
    buildah run $c chmod +x ./install.sh
    buildah config --entrypoint sh --cmd ./install.sh $c
@@ -104,15 +104,14 @@
  (vc ()
   (:build () (println "building vc image")
    #$c=$(buildah from o0)
-   buildah run $c apk add python-pygments python-pygit2 python-dulwich python-pip uwsgi
-   buildah run --user root $c groupadd $VC_USER
-   buildah run --user root $c useradd -G vc -S -s /usr/bin/bash -u $VC_ID $VC_USER
+   buildah run $c pacman -Sy python-pygments python-pygit2 python-dulwich python-pip uwsgi --noconfirm
+   buildah run --user root $c useradd -s /usr/bin/bash -u $VC_ID $VC_USER
    buildah config --user $VC_USER --workingdir $VC_HOME --entrypoint "./serve.sh" -p 8888 $c
    buildah run $c pip install --user --break-system-packages hg-evolve
    buildah run $c mkdir $VC_HOME/.stash $VC_HOME/src
-   buildah add --chown vc:vc $c $PACKY_HOME/src/home/vc.tar.zst /home/vc/.stash/
+   buildah add --chown vc $c $PACKY_HOME/src/home/vc.tar.zst /home/vc/.stash/
    buildah run --workingdir /home/vc/.stash $c cp -rf home/. $VC_HOME/
-   buildah run --user root --workingdir /home/vc/ $c chown -R vc:vc .
+   buildah run --user root --workingdir /home/vc/ $c chown -R vc .
    buildah commit $c vc
    buildah rm $c$#)
   (:run () #$podman run --name vc --replace -dt -v /home/ellis/comp/:/home/vc/src -p 8888:8888 vc$#))
@@ -121,9 +120,9 @@
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
  ;;; workers
  (worker ()
-  (with-buildah (c "scratch" :commit "worker")
-   (buildah-add "/usr/bin/core" "/bin/")
-   (buildah-config "--workingdir" "/" "--entrypoint" "/bin/core")))
+  (with-buildah (c "o3" :commit "worker")
+   (buildah-add "/usr/bin/core" "/usr/bin/")
+   (buildah-config "--workingdir" "/" "--entrypoint" "/usr/bin/core")))
  ;;; operator
  (o0 () (:build () (podman-build :file "Containerfile.o0" :tag "o0")))
  (o1 ()
@@ -133,14 +132,13 @@
     (buildah-add (merge-env-pathnames "src/home/operator.tar.zst" "PACKY_HOME") "/usr/src/")
     (buildah-run '("cp" "-rf" "home/." "/root/") :dir "/usr/src")
     (buildah-run '("git" "clone" "https://github.com/richardwesthaver/slime") :dir "/usr/share/lisp/")
-    (buildah-run '("git" "clone" "https://github.com/richardwesthaver/cl-ppcre") :dir "/usr/share/lisp/")
-    (buildah-run '("git" "clone" "https://github.com/richardwesthaver/ironclad") :dir "/usr/share/lisp/")
-    (buildah-add (merge-env-pathnames "core.tar.zst" "PACKY_DIST_X86") "/usr/src/infra/.stash/cache/tmp/")
+    (buildah-copy 
+     (namestring (merge-env-pathnames "core.zst" "PACKY_DIST_X86"))
+     "/usr/src/infra/.stash/cache/tmp/core.zst")
     (buildah-run '("chown" "-R" "root:root" ".") :dir "/usr/src/")
     (buildah-run '("scripts/install-core-pack.sh")
      :dir "/usr/src/infra" 
-     :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX"))
-            ("PACKY_HOME" . ,(sb-posix:getenv "PACKY_HOME"))))
+     :env `(("PREFIX" . ,(sb-posix:getenv "PREFIX"))))
     (buildah-run '("chmod" "777" "/usr/bin/core"))
     (buildah-run '("mkdir" "-pv" "/opt/store/packy/dist/x86_64-unknown-linux-gnu" "/opt/store/packy/src")))))
  (o2 ()
