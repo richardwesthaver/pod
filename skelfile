@@ -108,8 +108,8 @@
    buildah config --user $VC_USER --workingdir $VC_HOME --entrypoint "./serve.sh" -p 8888 $c
    buildah run $c pip install --user --break-system-packages hg-evolve
    buildah run $c mkdir $VC_HOME/.stash $VC_HOME/src
-   buildah add --chown vc $c $PACKY_HOME/src/home/vc.tar.zst /home/vc/.stash/
-   buildah run --workingdir /home/vc/.stash $c cp -rf home/. $VC_HOME/
+   buildah add --chown vc $c $PACKY_HOME/src/home/vc.tar.zst /usr/src/
+   buildah run $c cp -rf /usr/src/home/. $VC_HOME/
    buildah run --user root --workingdir /home/vc/ $c chown -R vc .
    buildah commit $c vc
    buildah rm $c$#)
