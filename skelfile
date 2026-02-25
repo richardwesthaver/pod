@@ -69,8 +69,8 @@
     (buildah-run '("sh" "scripts/install-emacs-pack.sh") :dir "/usr/src/infra/")
     (buildah-add "/opt/store/packy/src/core.tar.zst" "/usr/src/")
     (buildah-run "skel install" :dir "/usr/src/core/emacs/")
-    (buildah-config "--workingdir" "/root/" "--entrypoint" "/usr/local/bin/emacs")
-    (buildah-run '("/usr/local/bin/emacs" "--batch" 
+    (buildah-config "--workingdir" "/root/" "--entrypoint" "/usr/bin/emacs")
+    (buildah-run '("/usr/bin/emacs" "--batch" 
                    "-L" "/root/.stash/lisp/slime/"
                    "-L" "/root/.emacs.d/lib/"
                    "--eval" "'(setq user-custom-file \"/root/.emacs.d/operator.el\")'"
@@ -85,9 +85,9 @@
    (with-container (c "emacs" :detach t :tty t :cmd "sh" :stop t :run "bash")
     (podman-cp "$SRC/" "$c:/root/")
     (podman-exec 
-     '("/usr/local/bin/emacs" "--batch"
+     '("/usr/bin/emacs" "--batch"
        "--eval" "'(package-initialize)'"
-       "--eval" "'(setq inferior-lisp-program \"sbcl\")'"
+       "--eval" "'(setq inferior-lisp-program \"core\")'"
        "--eval" "'(setq publish-dir \"/tmp/compiler.company\")'"
        "--eval" "'(setq project-dir \"/root/org\")'"
        "--eval" "'(setq company-source-directory \"/root/\")'"
@@ -170,21 +170,20 @@
  (o ()
   (:build (build-o1 build-o2 build-o3))
   (:build-libs () 
-   (info! "building all binary packs with output to ~A" (sb-posix:getenv "PACKY_DIST_X86"))
-   (with-container (c "o2" :name "libs-o" :detach t :tty t :run "bash")
-    (print *container*)
-    (podman-exec '("skel" "build" "all")
+   (info! "building all binary packs with output to .stash/")
+   (with-container (c "o3" :name "libs-o" :tty t :run "/usr/bin/bash")
+    (podman-exec '("skel" "make" "build-all")
      :dir "/usr/src/infra"
      :container "libs-o")
-    (podman-exec '("skel" "dist" "all")
-     :dir "/usr/src/infra"
-     :container "libs-o")
-    (podman-cp "libs-o:/usr/src/infra/.stash/rocksdb.tar.zst" "$PACKY_DIST_X86/")
-    (podman-cp "libs-o:/usr/src/infra/.stash/sbcl.tar.zst" "$PACKY_DIST_X86/")
-    (podman-cp "libs-o:/usr/src/infra/.stash/zstd.tar.zst" "$PACKY_DIST_X86/")
-    (podman-cp "libs-o:/usr/src/infra/.stash/liburing.tar.zst" "$PACKY_DIST_X86/")
-    (podman-cp "libs-o:/usr/src/infra/.stash/tree-sitter.tar.zst" "$PACKY_DIST_X86/")
-    (podman-cp "libs-o:/usr/src/infra/.stash/tree-sitter-langs.tar.zst" "$PACKY_DIST_X86/")))
+    ;; (podman-exec '("skel" "make" "dist-all")
+    ;;  :dir "/usr/src/infra"
+    ;;  :container "libs-o")
+    (podman-cp "libs-o:/usr/src/infra/.stash/rocksdb.tar.zst" ".stash/")
+    (podman-cp "libs-o:/usr/src/infra/.stash/sbcl.tar.zst" ".stash/")
+    (podman-cp "libs-o:/usr/src/infra/.stash/zstd.tar.zst" ".stash/")
+    (podman-cp "libs-o:/usr/src/infra/.stash/liburing.tar.zst" ".stash/")
+    (podman-cp "libs-o:/usr/src/infra/.stash/tree-sitter.tar.zst" ".stash/")
+    (podman-cp "libs-o:/usr/src/infra/.stash/tree-sitter-langs.tar.zst" ".stash/")))
   (:build-src ()
    (info! "building all source packs with output to ${PACKY_HOME}/src")
    (with-container (c "o1" :name "src-o" :detach t :tty t :run "bash")
@@ -196,7 +195,7 @@
      (cp1 (merge-env-pathnames "core/." "SRC") "/usr/src/core")
      (cp1 (merge-env-pathnames "demo/." "SRC") "/usr/src/demo")
      (cp1 (merge-env-pathnames "org/." "SRC") "/usr/src/org")
-     (podman-exec '("skel" "dist" "all-source") 
+     (podman-exec '("skel" "make" "dist-all-source") 
       :dir "/usr/src/infra" 
       :container "src-o")
      (let ((src (merge-env-pathnames "src/" "PACKY_HOME")))
