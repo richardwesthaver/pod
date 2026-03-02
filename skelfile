@@ -47,6 +47,7 @@
    buildah config --workingdir /usr/src/demo --cmd '["skel", "shell"]' -p 7070 $c
    buildah commit $c demo
    buildah rm $c$#))
+ ;; TODO 2026-03-01: move to box
  (mail ()
   (:build () 
    (info! "building mail image")
@@ -54,12 +55,14 @@
    buildah run $c pacman -Sy inetutils --noconfirm
    buildah run $c curl --proto '=https' --tlsv1.2 -sSf https://get.stalw.art/install.sh -o install.sh
    buildah run $c chmod +x ./install.sh
-   buildah config --entrypoint sh --cmd ./install.sh $c
+   buildah run $c sh install.sh /var/mail
    buildah commit $c mail
    buildah rm $c$#)
   (:run () 
-   (podman-run :name "mail" :container "mail" 
-    :replace t :detach t :tty t :systemd true))) ;; -p 8080
+   (podman-run '("/var/mail/bin/stalwart" "-c" "/var/mail/etc/stalwart.toml") :name "mail" :container "mail"
+    :replace t :detach t :tty t :systemd t
+    :ports '((40443 . 443) (8080 . 8080) (40025 . 25) (40587 . 587) (40465 . 465) (40143 . 143) (40993 . 993) (4190 . 4190)
+             (40110 . 110) (40995 . 995)))))
  (emacs ()
   (:build () 
    (info! "building emacs image")
@@ -118,6 +121,11 @@
  ;;  (:build () #$podman build -f Containerfile.git -t git --no-cache$#)
  ;;  (:run () #$podman run --name git --replace -dt -v $HOME/src/packy:/home/vc/packy:z -p 8889:80 git$#))
  ;;; workers
+ (heptapod ()
+  (:build () (println "building heptapod image")
+   #$c=$(buildah from heptapod/heptapod)
+   buildah commit $c heptapod
+   buildah rm $c$#))
  (worker ()
   (with-buildah (c "o3" :commit "worker")
    (buildah-add "/usr/bin/core" "/usr/bin/")
