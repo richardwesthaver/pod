@@ -18,7 +18,8 @@
 :components
 ((:containerfile))
 :rules
-((web ()
+((default (build-op save-op))
+ (web ()
   (:build () 
    (info! "building web image")
    (with-buildah (c "o1" :commit "web")
